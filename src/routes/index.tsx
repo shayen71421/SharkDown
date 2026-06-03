@@ -12,6 +12,8 @@ import {
   Code2,
   Quote,
   LogIn,
+  GitFork,
+  ImagePlus,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -23,7 +25,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Compose technical docs in a visual editor, export pristine Markdown. No syntax required.",
+          "SharkDown is a visual-first Markdown editor with GitHub integration. Edit READMEs, commit, and open pull requests — all from a rich WYSIWYG editor.",
       },
     ],
   }),
@@ -47,14 +49,29 @@ const features = [
     body: "Add, remove, resize columns. Round-trips to clean GFM Markdown.",
   },
   {
-    icon: ListChecks,
-    title: "Task lists",
-    body: "Checklists, nested lists, and todo blocks that survive export.",
+    icon: Github,
+    title: "GitHub native",
+    body: "Sign in with GitHub, browse your repos, and edit any README visually.",
+  },
+  {
+    icon: GitFork,
+    title: "Commit & PR",
+    body: "Push changes, create branches, and open pull requests — without leaving the editor.",
+  },
+  {
+    icon: ImagePlus,
+    title: "Image hosting",
+    body: "Upload images directly to your repo. No external service needed.",
   },
   {
     icon: Eye,
     title: "Split preview",
     body: "Toggle visual, Markdown, or side-by-side — see the source any time.",
+  },
+  {
+    icon: ListChecks,
+    title: "Task lists",
+    body: "Checklists, nested lists, and todo blocks that survive export.",
   },
   {
     icon: Quote,
@@ -128,10 +145,10 @@ function Landing() {
           <br />
           Publish like <span className="text-gradient">Markdown</span>.
         </h1>
-        <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground md:text-lg">
+          <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground md:text-lg">
           SharkDown is a visual-first, Markdown-native editor for developers,
-          maintainers, and technical writers. Compose in a rich editor —
-          export pristine, standards-compliant Markdown every time.
+          maintainers, and technical writers. Compose in a rich editor — push
+          straight to GitHub as commits and pull requests.
         </p>
         <div className="mt-9 flex items-center justify-center gap-3">
           <Button asChild size="lg" className="rounded-full px-6">
@@ -184,11 +201,19 @@ function Landing() {
                   <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">
                     ✓
                   </span>
-                  Code blocks
+                  Code blocks with syntax highlighting
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="grid h-4 w-4 place-items-center rounded border border-border" />
-                  GitHub sync
+                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">
+                    ✓
+                  </span>
+                  Browse & edit GitHub repos
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">
+                    ✓
+                  </span>
+                  Commit & open pull requests
                 </li>
               </ul>
             </div>
@@ -198,8 +223,9 @@ function Landing() {
                 A friendly editor with **bold**, *italics*, and `inline code`.
               </div>
               <div className="mt-4">- [x] Tables & checklists</div>
-              <div>- [x] Code blocks</div>
-              <div>- [ ] GitHub sync</div>
+              <div>- [x] Code blocks with syntax highlighting</div>
+              <div>- [x] Browse & edit GitHub repos</div>
+              <div>- [x] Commit & open pull requests</div>
             </div>
           </div>
         </div>
@@ -209,10 +235,10 @@ function Landing() {
       <section id="features" className="mx-auto max-w-6xl px-6 py-20">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <h2 className="font-display text-3xl font-bold md:text-4xl">
-            Every block. Every shortcut. Zero syntax to learn.
+            Edit locally. Ship to GitHub.
           </h2>
           <p className="mt-4 text-muted-foreground">
-            SharkDown supports the full Markdown spec under a visual surface.
+            A rich editor, full GitHub workflow — no terminal required.
           </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -259,15 +285,30 @@ function Landing() {
         className="mx-auto max-w-3xl px-6 pb-24 text-center"
       >
         <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs text-muted-foreground">
-          <Github className="h-3.5 w-3.5" /> Phase 2 — Coming soon
+          <Github className="h-3.5 w-3.5" /> Phase 2 — Live now
         </div>
         <h2 className="font-display text-3xl font-bold">
-          GitHub-native documentation, next.
+          Ship docs from your editor.
         </h2>
         <p className="mt-3 text-muted-foreground">
           Sign in with GitHub, browse your repos, edit README files visually,
           commit and open pull requests — without leaving SharkDown.
         </p>
+        <div className="mt-8 flex items-center justify-center gap-3">
+          <Button asChild size="lg" className="rounded-full">
+            <Link to="/login">
+              <Github className="mr-2 h-4 w-4" /> Sign in with GitHub
+            </Link>
+          </Button>
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="rounded-full"
+          >
+            <Link to="/dashboard">Go to Dashboard</Link>
+          </Button>
+        </div>
       </section>
 
       <footer className="border-t border-border bg-surface/40 py-6 text-center text-xs text-muted-foreground">
