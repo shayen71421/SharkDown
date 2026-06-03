@@ -67,7 +67,7 @@ function Btn({
 }
 
 export function EditorToolbar({ editor }: Props) {
-  if (!editor) {
+  if (!editor || !editor.isEditable) {
     return <div className="h-12 border-b border-border bg-surface/60" />;
   }
 
@@ -75,24 +75,37 @@ export function EditorToolbar({ editor }: Props) {
     const prev = editor.getAttributes("link").href;
     const url = window.prompt("URL", prev ?? "https://");
     if (url === null) return;
-    if (url === "") {
+    const trimmed = url.trim();
+    if (trimmed === "") {
       editor.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-    editor.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
+    const { empty } = editor.state.selection;
+    if (empty) {
+      editor
+        .chain()
+        .focus()
+        .insertContent(`<a href="${trimmed.replace(/"/g, "&quot;")}">${trimmed}</a>`)
+        .run();
+    } else {
+      editor.chain().focus().extendMarkRange("link").setLink({ href: trimmed }).run();
+    }
   };
 
   const addImage = () => {
     const url = window.prompt("Image URL");
-    if (url) editor.chain().focus().setImage({ src: url }).run();
-  };
-
-  const addTable = () => {
+    if (!url) return;
+    const trimmed = url.trim();
+    if (!trimmed) return;
     editor
       .chain()
       .focus()
-      .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+      .insertContent(`<img src="${trimmed.replace(/"/g, "&quot;")}">`)
       .run();
+  };
+
+  const addTable = () => {
+    editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
   };
 
   return (
@@ -117,27 +130,21 @@ export function EditorToolbar({ editor }: Props) {
       <Btn
         title="Heading 1"
         active={editor.isActive("heading", { level: 1 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 1 }).run()
-        }
+        onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
       >
         <Heading1 className="h-4 w-4" />
       </Btn>
       <Btn
         title="Heading 2"
         active={editor.isActive("heading", { level: 2 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 2 }).run()
-        }
+        onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
       >
         <Heading2 className="h-4 w-4" />
       </Btn>
       <Btn
         title="Heading 3"
         active={editor.isActive("heading", { level: 3 })}
-        onClick={() =>
-          editor.chain().focus().toggleHeading({ level: 3 }).run()
-        }
+        onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
       >
         <Heading3 className="h-4 w-4" />
       </Btn>
@@ -265,11 +272,7 @@ export function EditorToolbar({ editor }: Props) {
 
       <Separator orientation="vertical" className="mx-1 h-5" />
 
-      <Btn
-        title="Link"
-        active={editor.isActive("link")}
-        onClick={setLink}
-      >
+      <Btn title="Link" active={editor.isActive("link")} onClick={setLink}>
         <LinkIcon className="h-4 w-4" />
       </Btn>
       <Btn title="Image" onClick={addImage}>
@@ -285,10 +288,7 @@ export function EditorToolbar({ editor }: Props) {
       <Btn title="Table" onClick={addTable}>
         <TableIcon className="h-4 w-4" />
       </Btn>
-      <Btn
-        title="Divider"
-        onClick={() => editor.chain().focus().setHorizontalRule().run()}
-      >
+      <Btn title="Divider" onClick={() => editor.chain().focus().setHorizontalRule().run()}>
         <Minus className="h-4 w-4" />
       </Btn>
     </div>

@@ -1,6 +1,5 @@
 import { useEditor, EditorContent, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Image from "@tiptap/extension-image";
 import TaskList from "@tiptap/extension-task-list";
@@ -29,7 +28,6 @@ export function buildExtensions() {
       codeBlock: false,
       link: false,
     }),
-    Underline,
     Highlight,
     Superscript,
     Subscript,

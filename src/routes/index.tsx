@@ -11,6 +11,7 @@ import {
   ListChecks,
   Code2,
   Quote,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -94,20 +95,23 @@ function Landing() {
           <a href="#roadmap" className="hover:text-foreground">
             Roadmap
           </a>
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hover:text-foreground"
-          >
-            GitHub
-          </a>
+          <Link to="/login" className="hover:text-foreground">
+            Sign in
+          </Link>
+          <Link to="/dashboard" className="hover:text-foreground">
+            Dashboard
+          </Link>
         </nav>
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <Button asChild size="sm" className="rounded-full">
             <Link to="/editor">
               Open editor <ArrowRight className="ml-1 h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="rounded-full">
+            <Link to="/login">
+              <Github className="mr-1 h-4 w-4" /> Sign in
             </Link>
           </Button>
         </div>
@@ -117,7 +121,7 @@ function Landing() {
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-12 text-center md:pt-20">
         <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
           <Sparkles className="h-3.5 w-3.5 text-primary-glow" />
-          Phase 1 — Core editor is live
+          Phase 2 — GitHub integration is here
         </div>
         <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight md:text-7xl">
           Write like <span className="text-gradient">Word</span>.

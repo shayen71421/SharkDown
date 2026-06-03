@@ -63,3 +63,64 @@ export const useDoc = create<DocState>()(
     { name: "sharkdown-doc" },
   ),
 );
+
+/* ───── GitHub store ───── */
+
+export interface GithubUser {
+  id: number;
+  login: string;
+  avatar_url: string;
+  name: string | null;
+}
+
+export interface RepoInfo {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  default_branch: string;
+  html_url: string;
+  owner: { login: string; avatar_url: string };
+  updated_at: string;
+}
+
+interface GithubState {
+  user: GithubUser | null;
+  jwt: string | null;
+  repos: RepoInfo[];
+  repoPage: number;
+  repoSearch: string;
+  repoTotal: number;
+  loading: boolean;
+  setUser: (user: GithubUser | null) => void;
+  setJwt: (jwt: string | null) => void;
+  setRepos: (repos: RepoInfo[], total: number) => void;
+  setRepoPage: (page: number) => void;
+  setRepoSearch: (search: string) => void;
+  setLoading: (loading: boolean) => void;
+  reset: () => void;
+}
+
+export const useGithubStore = create<GithubState>()(
+  persist(
+    (set) => ({
+      user: null,
+      jwt: null,
+      repos: [],
+      repoPage: 1,
+      repoSearch: "",
+      repoTotal: 0,
+      loading: false,
+      setUser: (user) => set({ user }),
+      setJwt: (jwt) => set({ jwt }),
+      setRepos: (repos, total) => set({ repos, repoTotal: total }),
+      setRepoPage: (repoPage) => set({ repoPage }),
+      setRepoSearch: (repoSearch) => set({ repoSearch }),
+      setLoading: (loading) => set({ loading }),
+      reset: () =>
+        set({ user: null, jwt: null, repos: [], repoPage: 1, repoSearch: "", repoTotal: 0 }),
+    }),
+    { name: "sharkdown-github", partialize: (state) => ({ user: state.user }) },
+  ),
+);

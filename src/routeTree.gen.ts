@@ -10,12 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as EditorRouteImport } from './routes/editor'
+import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RepoOwnerRepoRouteImport } from './routes/repo/$owner/$repo'
+import { Route as ApiAuthLogoutRouteImport } from './routes/api/auth/logout'
+import { Route as ApiAuthCallbackRouteImport } from './routes/api/auth/callback'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
   id: '/sitemap.xml',
   path: '/sitemap.xml',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EditorRoute = EditorRouteImport.update({
@@ -23,40 +33,105 @@ const EditorRoute = EditorRouteImport.update({
   path: '/editor',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RepoOwnerRepoRoute = RepoOwnerRepoRouteImport.update({
+  id: '/repo/$owner/$repo',
+  path: '/repo/$owner/$repo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLogoutRoute = ApiAuthLogoutRouteImport.update({
+  id: '/api/auth/logout',
+  path: '/api/auth/logout',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthCallbackRoute = ApiAuthCallbackRouteImport.update({
+  id: '/api/auth/callback',
+  path: '/api/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/editor': typeof EditorRoute
+  '/login': typeof LoginRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/repo/$owner/$repo': typeof RepoOwnerRepoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/editor': typeof EditorRoute
+  '/login': typeof LoginRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/repo/$owner/$repo': typeof RepoOwnerRepoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/dashboard': typeof DashboardRoute
   '/editor': typeof EditorRoute
+  '/login': typeof LoginRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/api/auth/callback': typeof ApiAuthCallbackRoute
+  '/api/auth/logout': typeof ApiAuthLogoutRoute
+  '/repo/$owner/$repo': typeof RepoOwnerRepoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/editor' | '/sitemap.xml'
+  fullPaths:
+    | '/'
+    | '/dashboard'
+    | '/editor'
+    | '/login'
+    | '/sitemap.xml'
+    | '/api/auth/callback'
+    | '/api/auth/logout'
+    | '/repo/$owner/$repo'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/editor' | '/sitemap.xml'
-  id: '__root__' | '/' | '/editor' | '/sitemap.xml'
+  to:
+    | '/'
+    | '/dashboard'
+    | '/editor'
+    | '/login'
+    | '/sitemap.xml'
+    | '/api/auth/callback'
+    | '/api/auth/logout'
+    | '/repo/$owner/$repo'
+  id:
+    | '__root__'
+    | '/'
+    | '/dashboard'
+    | '/editor'
+    | '/login'
+    | '/sitemap.xml'
+    | '/api/auth/callback'
+    | '/api/auth/logout'
+    | '/repo/$owner/$repo'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DashboardRoute: typeof DashboardRoute
   EditorRoute: typeof EditorRoute
+  LoginRoute: typeof LoginRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiAuthCallbackRoute: typeof ApiAuthCallbackRoute
+  ApiAuthLogoutRoute: typeof ApiAuthLogoutRoute
+  RepoOwnerRepoRoute: typeof RepoOwnerRepoRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -68,11 +143,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/editor': {
       id: '/editor'
       path: '/editor'
       fullPath: '/editor'
       preLoaderRoute: typeof EditorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -82,13 +171,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/repo/$owner/$repo': {
+      id: '/repo/$owner/$repo'
+      path: '/repo/$owner/$repo'
+      fullPath: '/repo/$owner/$repo'
+      preLoaderRoute: typeof RepoOwnerRepoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/logout': {
+      id: '/api/auth/logout'
+      path: '/api/auth/logout'
+      fullPath: '/api/auth/logout'
+      preLoaderRoute: typeof ApiAuthLogoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/callback': {
+      id: '/api/auth/callback'
+      path: '/api/auth/callback'
+      fullPath: '/api/auth/callback'
+      preLoaderRoute: typeof ApiAuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DashboardRoute: DashboardRoute,
   EditorRoute: EditorRoute,
+  LoginRoute: LoginRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiAuthCallbackRoute: ApiAuthCallbackRoute,
+  ApiAuthLogoutRoute: ApiAuthLogoutRoute,
+  RepoOwnerRepoRoute: RepoOwnerRepoRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
