@@ -1,5 +1,4 @@
 {
-  "framework": "nitro",
   "buildCommand": "pnpm build",
   "installCommand": "pnpm install"
 }
