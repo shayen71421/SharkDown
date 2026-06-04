@@ -16,10 +16,8 @@ function LoginContent() {
     <>
       <div className="mx-auto max-w-sm text-center">
         <div className="mb-8 flex justify-center">
-          <div className="grid h-16 w-16 place-items-center rounded-2xl bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-lg shadow-primary/30">
-            <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none">
-              <path d="M3 14c4-7 14-7 18 0-3-2-6-2-9 1-3-3-6-3-9-1z" fill="currentColor" />
-            </svg>
+          <div className="overflow-hidden rounded-2xl shadow-lg shadow-primary/30 ring-1 ring-border">
+            <img src="/logo.png" alt="SharkDown" className="h-16 w-16 object-cover" />
           </div>
         </div>
 
