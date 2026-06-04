@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import {
@@ -23,33 +25,13 @@ import { EditorToolbar } from "@/components/editor/EditorToolbar";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useDoc, type ViewMode } from "@/lib/store";
 
-export const Route = createFileRoute("/editor")({
-  head: () => ({
-    meta: [
-      { title: "Editor — SharkDown" },
-      {
-        name: "description",
-        content: "Compose Markdown visually with SharkDown's TipTap-powered editor.",
-      },
-    ],
-  }),
-  component: EditorPage,
-});
-
-function EditorPage() {
+export default function EditorPage() {
   const { title, markdown, view, setTitle, setMarkdown, setView } = useDoc();
   const [editor, setEditor] = useState<Editor | null>(null);
   const [copied, setCopied] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  // tiny "saved" indicator off zustand persistence
-  useEffect(() => {
-    const t = setTimeout(() => setSavedAt(new Date()), 600);
-    return () => clearTimeout(t);
-  }, [markdown, title]);
-
-  // tiny "saved" indicator off zustand persistence
   useEffect(() => {
     const t = setTimeout(() => setSavedAt(new Date()), 600);
     return () => clearTimeout(t);
@@ -107,10 +89,9 @@ function EditorPage() {
         }}
       />
 
-      {/* Top bar */}
       <header className="z-30 flex items-center gap-2 border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur-md">
         <Button asChild variant="ghost" size="icon" className="h-9 w-9">
-          <Link to="/">
+          <Link href="/">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -189,7 +170,6 @@ function EditorPage() {
         <ThemeToggle />
       </header>
 
-      {/* Body */}
       <div className="flex min-h-0 flex-1">
         {(view === "visual" || view === "split") && (
           <div className="flex min-w-0 flex-1 flex-col">
@@ -229,7 +209,6 @@ function EditorPage() {
         )}
       </div>
 
-      {/* Status bar */}
       <footer className="flex items-center justify-between border-t border-border bg-surface/80 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur">
         <div className="flex items-center gap-4">
           <span>{words.toLocaleString()} words</span>
