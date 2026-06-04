@@ -163,14 +163,10 @@ export default function Landing() {
       </header>
 
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-12 text-center md:pt-20">
-        <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-          <Sparkles className="h-3.5 w-3.5 text-primary-glow" />
-          Phase 2 — GitHub integration is here
-        </div>
         <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight md:text-7xl">
-          Write like <span className="text-gradient">Word</span>.
+          Write like Word
           <br />
-          Publish like <span className="text-gradient">Markdown</span>.
+          Publish like Markdown
         </h1>
         <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground md:text-lg">
           SharkDown is a visual-first, Markdown-native editor for developers, maintainers, and
