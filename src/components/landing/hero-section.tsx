@@ -38,8 +38,12 @@ export function HeroSection() {
               inView ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}
           >
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3.5 py-1 text-xs text-muted-foreground">
+              <Github className="h-3.5 w-3.5" />
+              Open Source
+            </div>
             <h1 className="font-display text-5xl font-bold leading-[1.05] tracking-tight md:text-6xl lg:text-7xl">
-              Write Markdown like Notion.
+              Write Markdown like Word.
               <br />
               Push to GitHub instantly.
             </h1>
