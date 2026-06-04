@@ -1,5 +1,5 @@
 import process from "node:process";
-import { kv } from "@vercel/kv";
+import IORedis from "ioredis";
 
 export interface SessionData {
   githubToken: string;
@@ -16,32 +16,47 @@ export interface SessionStore {
 
 const SESSION_TTL_SEC = 7 * 24 * 60 * 60;
 
-/* ───── Vercel KV (Redis) — production ───── */
+/* ───── Redis (works with Vercel KV + Official Redis for Vercel) ───── */
 
-class KvStore implements SessionStore {
+class RedisStore implements SessionStore {
+  private redis: IORedis;
+
+  constructor() {
+    const url = redisUrl();
+    this.redis = new IORedis(url, {
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+      retryStrategy(times) {
+        if (times > 3) return null;
+        return Math.min(times * 200, 2000);
+      },
+    });
+  }
+
   async create(data: Omit<SessionData, "createdAt" | "expiresAt">): Promise<string> {
     const sessionId = crypto.randomUUID();
     const now = Date.now();
-    await kv.set(sessionId, {
+    await this.redis.setex(sessionId, SESSION_TTL_SEC, JSON.stringify({
       ...data,
       createdAt: now,
       expiresAt: now + SESSION_TTL_SEC * 1000,
-    }, { ex: SESSION_TTL_SEC });
+    }));
     return sessionId;
   }
 
   async get(sessionId: string): Promise<SessionData | null> {
-    const data = await kv.get<SessionData>(sessionId);
-    if (!data) return null;
+    const raw = await this.redis.get(sessionId);
+    if (!raw) return null;
+    const data: SessionData = JSON.parse(raw);
     if (Date.now() > data.expiresAt) {
-      await kv.del(sessionId);
+      await this.redis.del(sessionId);
       return null;
     }
     return data;
   }
 
   async delete(sessionId: string): Promise<void> {
-    await kv.del(sessionId);
+    await this.redis.del(sessionId);
   }
 }
 
@@ -76,11 +91,27 @@ class InMemoryStore implements SessionStore {
   }
 }
 
-/* ───── Factory — auto-detect Vercel KV vs in-memory ───── */
+/* ───── helper: scan env for prefixed redis/kv vars ───── */
+
+function findEnv(suffix: string): string | undefined {
+  for (const key of Object.keys(process.env)) {
+    if (key.endsWith(suffix)) return process.env[key];
+  }
+}
+
+function redisUrl(): string {
+  return findEnv("KV_URL") || findEnv("REDIS_URL") || "";
+}
+
+function hasRedis(): boolean {
+  return !!redisUrl();
+}
+
+/* ───── Factory — auto-detect Redis vs in-memory ───── */
 
 export function createSessionStore(): SessionStore {
-  if (process.env.KV_URL) {
-    return new KvStore();
+  if (hasRedis()) {
+    return new RedisStore();
   }
   return new InMemoryStore();
 }
