@@ -14,9 +14,18 @@ import {
   LogIn,
   GitFork,
   ImagePlus,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useGithubStore } from "@/lib/store";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -81,13 +90,11 @@ const features = [
 ];
 
 function Landing() {
+  const { user } = useGithubStore();
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
       {/* Ambient gradient */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10 bg-grid opacity-40"
-      />
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-grid opacity-40" />
       <div
         aria-hidden
         className="pointer-events-none absolute -top-40 left-1/2 -z-10 h-[600px] w-[900px] -translate-x-1/2 rounded-full"
@@ -98,39 +105,74 @@ function Landing() {
         }}
       />
 
-      <header className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-        <Link to="/" className="flex items-center gap-2">
-          <Logo />
-          <span className="font-display text-lg font-bold tracking-tight">
-            SharkDown
-          </span>
-        </Link>
-        <nav className="hidden items-center gap-8 text-sm text-muted-foreground md:flex">
+      <header className="mx-auto flex max-w-6xl items-center px-6 py-5">
+        <div className="flex flex-1">
+          <Link to="/" className="flex items-center gap-2 w-fit">
+            <Logo />
+            <span className="font-display text-lg font-bold tracking-tight">SharkDown</span>
+          </Link>
+        </div>
+        <nav className="absolute left-1/2 -translate-x-1/2 hidden items-center gap-6 text-sm text-muted-foreground md:flex">
           <a href="#features" className="hover:text-foreground">
             Features
           </a>
           <a href="#roadmap" className="hover:text-foreground">
             Roadmap
           </a>
-          <Link to="/login" className="hover:text-foreground">
-            Sign in
-          </Link>
-          <Link to="/dashboard" className="hover:text-foreground">
-            Dashboard
-          </Link>
+          {user ? (
+            <Link to="/dashboard" className="hover:text-foreground">
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link to="/login" className="hover:text-foreground">
+                Sign in
+              </Link>
+              <Link to="/dashboard" className="hover:text-foreground">
+                Dashboard
+              </Link>
+            </>
+          )}
         </nav>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-1 items-center justify-end gap-2">
           <ThemeToggle />
           <Button asChild size="sm" className="rounded-full">
             <Link to="/editor">
               Open editor <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
-          <Button asChild variant="outline" size="sm" className="rounded-full">
-            <Link to="/login">
-              <Github className="mr-1 h-4 w-4" /> Sign in
-            </Link>
-          </Button>
+          {user ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-1.5 rounded-full">
+                  <img src={user.avatar_url} alt={user.login} className="h-5 w-5 rounded-full" />
+                  <span className="max-w-24 truncate">{user.name ?? user.login}</span>
+                  <ChevronDown className="h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem asChild>
+                  <Link to="/dashboard">Dashboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={async () => {
+                    await fetch("/api/auth/logout", { method: "POST" });
+                    useGithubStore.getState().reset();
+                    window.location.reload();
+                  }}
+                >
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <Button asChild variant="outline" size="sm" className="rounded-full">
+              <Link to="/login">
+                <Github className="mr-1 h-4 w-4" /> Sign in
+              </Link>
+            </Button>
+          )}
         </div>
       </header>
 
@@ -145,10 +187,10 @@ function Landing() {
           <br />
           Publish like <span className="text-gradient">Markdown</span>.
         </h1>
-          <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground md:text-lg">
-          SharkDown is a visual-first, Markdown-native editor for developers,
-          maintainers, and technical writers. Compose in a rich editor — push
-          straight to GitHub as commits and pull requests.
+        <p className="mx-auto mt-6 max-w-2xl text-balance text-base leading-relaxed text-muted-foreground md:text-lg">
+          SharkDown is a visual-first, Markdown-native editor for developers, maintainers, and
+          technical writers. Compose in a rich editor — push straight to GitHub as commits and pull
+          requests.
         </p>
         <div className="mt-9 flex items-center justify-center gap-3">
           <Button asChild size="lg" className="rounded-full px-6">
@@ -156,12 +198,7 @@ function Landing() {
               Start writing <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="lg"
-            className="rounded-full px-6"
-          >
+          <Button asChild variant="outline" size="lg" className="rounded-full px-6">
             <a href="#features">See features</a>
           </Button>
         </div>
@@ -172,18 +209,13 @@ function Landing() {
             <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
             <span className="h-2.5 w-2.5 rounded-full bg-warning/70" />
             <span className="h-2.5 w-2.5 rounded-full bg-success/70" />
-            <span className="ml-3 text-xs text-muted-foreground">
-              README.md — SharkDown
-            </span>
+            <span className="ml-3 text-xs text-muted-foreground">README.md — SharkDown</span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2">
             <div className="space-y-4 border-border p-8 md:border-r">
-              <h2 className="font-display text-2xl font-bold">
-                Hello, document
-              </h2>
+              <h2 className="font-display text-2xl font-bold">Hello, document</h2>
               <p className="text-sm text-muted-foreground">
-                A friendly editor with{" "}
-                <span className="font-semibold text-foreground">bold</span>,{" "}
+                A friendly editor with <span className="font-semibold text-foreground">bold</span>,{" "}
                 <em>italics</em>, and{" "}
                 <code className="rounded bg-secondary px-1.5 py-0.5 text-xs text-primary-glow">
                   inline code
@@ -264,35 +296,30 @@ function Landing() {
             <FileUp className="mb-4 h-6 w-6 text-primary-glow" />
             <h3 className="font-display text-xl font-bold">Drop in any .md</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Paste Markdown, upload a file, or open a README. SharkDown parses
-              it into a rich visual document instantly.
+              Paste Markdown, upload a file, or open a README. SharkDown parses it into a rich
+              visual document instantly.
             </p>
           </div>
           <div className="rounded-2xl border border-border bg-surface p-8">
             <FileDown className="mb-4 h-6 w-6 text-primary-glow" />
             <h3 className="font-display text-xl font-bold">Export pristine</h3>
             <p className="mt-2 text-sm text-muted-foreground">
-              Copy to clipboard or download .md. Output is GFM-compatible and
-              ready for GitHub, npm, or your docs site.
+              Copy to clipboard or download .md. Output is GFM-compatible and ready for GitHub, npm,
+              or your docs site.
             </p>
           </div>
         </div>
       </section>
 
       {/* Roadmap */}
-      <section
-        id="roadmap"
-        className="mx-auto max-w-3xl px-6 pb-24 text-center"
-      >
+      <section id="roadmap" className="mx-auto max-w-3xl px-6 pb-24 text-center">
         <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs text-muted-foreground">
           <Github className="h-3.5 w-3.5" /> Phase 2 — Live now
         </div>
-        <h2 className="font-display text-3xl font-bold">
-          Ship docs from your editor.
-        </h2>
+        <h2 className="font-display text-3xl font-bold">Ship docs from your editor.</h2>
         <p className="mt-3 text-muted-foreground">
-          Sign in with GitHub, browse your repos, edit README files visually,
-          commit and open pull requests — without leaving SharkDown.
+          Sign in with GitHub, browse your repos, edit README files visually, commit and open pull
+          requests — without leaving SharkDown.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Button asChild size="lg" className="rounded-full">
@@ -300,20 +327,14 @@ function Landing() {
               <Github className="mr-2 h-4 w-4" /> Sign in with GitHub
             </Link>
           </Button>
-          <Button
-            asChild
-            variant="outline"
-            size="lg"
-            className="rounded-full"
-          >
+          <Button asChild variant="outline" size="lg" className="rounded-full">
             <Link to="/dashboard">Go to Dashboard</Link>
           </Button>
         </div>
       </section>
 
       <footer className="border-t border-border bg-surface/40 py-6 text-center text-xs text-muted-foreground">
-        Built with TipTap, marked, and a lot of fins. © {new Date().getFullYear()}{" "}
-        SharkDown.
+        Built with TipTap, marked, and a lot of fins. © {new Date().getFullYear()} SharkDown.
       </footer>
     </div>
   );
@@ -321,14 +342,10 @@ function Landing() {
 
 function Logo() {
   return (
-    <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary-glow text-primary-foreground shadow-lg shadow-primary/30">
-      <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-        <path
-          d="M3 14c4-7 14-7 18 0-3-2-6-2-9 1-3-3-6-3-9-1z"
-          fill="currentColor"
-        />
-        <circle cx="15" cy="11" r="0.8" fill="oklch(0.13 0.03 265)" />
-      </svg>
-    </div>
+    <img
+      src="/logo.png"
+      alt="SharkDown"
+      className="h-8 w-8 rounded-lg object-cover"
+    />
   );
 }

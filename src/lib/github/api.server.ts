@@ -2,12 +2,71 @@ import process from "node:process";
 
 const GH_API = "https://api.github.com";
 
+/* ───── Simple in-memory rate limiter ───── */
+const buckets = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(key: string, limit: number, windowMs: number): void {
+  const now = Date.now();
+  const bucket = buckets.get(key);
+  if (!bucket || now > bucket.resetAt) {
+    buckets.set(key, { count: 1, resetAt: now + windowMs });
+    return;
+  }
+  bucket.count++;
+  if (bucket.count > limit) {
+    throw new Error("Too many requests. Please slow down.");
+  }
+}
+
 function headers(token: string): Record<string, string> {
   return {
     Authorization: `Bearer ${token}`,
     Accept: "application/vnd.github.v3+json",
     "User-Agent": "SharkDown",
   };
+}
+
+function sanitizeError(context: string, status: number): Error {
+  if (status === 401 || status === 403) {
+    return new Error("Unable to authenticate. Please sign in again.");
+  }
+  if (status === 404) {
+    return new Error("The requested resource was not found.");
+  }
+  return new Error(`Unable to ${context}. Please try again.`);
+}
+
+export interface RepoInfo {
+  id: number;
+  name: string;
+  full_name: string;
+  description: string | null;
+  private: boolean;
+  default_branch: string;
+  html_url: string;
+  owner: { login: string; avatar_url: string };
+  updated_at: string;
+}
+
+export async function getRepo(token: string, owner: string, repo: string): Promise<RepoInfo> {
+  checkRateLimit("getRepo", 30, 60_000);
+  const url = `${GH_API}/repos/${owner}/${repo}`;
+  const res = await fetch(url, { headers: headers(token) });
+  if (!res.ok) throw sanitizeError("load repository", res.status);
+  return (await res.json()) as RepoInfo;
+}
+
+export interface Branch {
+  name: string;
+  commit: { sha: string; url: string };
+}
+
+export async function listBranches(token: string, owner: string, repo: string): Promise<Branch[]> {
+  checkRateLimit("listBranches", 30, 60_000);
+  const url = `${GH_API}/repos/${owner}/${repo}/branches?per_page=100`;
+  const res = await fetch(url, { headers: headers(token) });
+  if (!res.ok) throw sanitizeError("load branches", res.status);
+  return (await res.json()) as Branch[];
 }
 
 export interface Repo {
@@ -27,19 +86,20 @@ export async function listRepositories(
   page = 1,
   search?: string,
 ): Promise<{ repos: Repo[]; total: number }> {
+  checkRateLimit("listRepos", 30, 60_000);
   const perPage = 30;
   let url = `${GH_API}/user/repos?per_page=${perPage}&page=${page}&sort=updated&type=all`;
 
   if (search) {
     url = `${GH_API}/search/repositories?q=${encodeURIComponent(`${search} user:@me`)}&per_page=${perPage}&page=${page}&sort=updated`;
     const res = await fetch(url, { headers: headers(token) });
-    if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+    if (!res.ok) throw sanitizeError("load repositories", res.status);
     const data = (await res.json()) as { items: Repo[]; total_count: number };
     return { repos: data.items, total: data.total_count };
   }
 
   const res = await fetch(url, { headers: headers(token) });
-  if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+  if (!res.ok) throw sanitizeError("load repositories", res.status);
 
   const repos = (await res.json()) as Repo[];
   const linkHeader = res.headers.get("link") ?? "";
@@ -60,6 +120,7 @@ export async function getReadme(
   repo: string,
   branch?: string,
 ): Promise<ReadmeResult> {
+  checkRateLimit("getReadme", 30, 60_000);
   const ref = branch ? `?ref=${encodeURIComponent(branch)}` : "";
   const url = `${GH_API}/repos/${owner}/${repo}/readme${ref}`;
 
@@ -69,7 +130,7 @@ export async function getReadme(
     return { content: "", sha: "", path: "README.md", exists: false };
   }
   if (!res.ok) {
-    throw new Error(`Failed to fetch README: ${res.status} ${res.statusText}`);
+    throw sanitizeError("load README", res.status);
   }
 
   const data = (await res.json()) as { content: string; sha: string; path: string };
@@ -84,12 +145,13 @@ export async function getFile(
   path: string,
   branch?: string,
 ): Promise<{ content: string; sha: string } | null> {
+  checkRateLimit("getFile", 30, 60_000);
   const ref = branch ? `?ref=${encodeURIComponent(branch)}` : "";
   const url = `${GH_API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}${ref}`;
 
   const res = await fetch(url, { headers: headers(token) });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`GitHub API error: ${res.status}`);
+  if (!res.ok) throw sanitizeError("access file", res.status);
 
   const data = (await res.json()) as { content: string; sha: string };
   return { content: Buffer.from(data.content, "base64").toString("utf-8"), sha: data.sha };
@@ -109,6 +171,7 @@ export async function saveReadme(
   sha: string,
   branch?: string,
 ): Promise<SaveResult> {
+  checkRateLimit("saveReadme", 10, 60_000);
   const url = `${GH_API}/repos/${owner}/${repo}/contents/README.md`;
   const body: Record<string, unknown> = {
     message,
@@ -124,8 +187,7 @@ export async function saveReadme(
   });
 
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { message?: string };
-    throw new Error(err.message ?? `Failed to save: ${res.status} ${res.statusText}`);
+    throw sanitizeError("save file", res.status);
   }
 
   const data = (await res.json()) as SaveResult;
@@ -141,6 +203,7 @@ export async function uploadImage(
   message: string,
   branch?: string,
 ): Promise<{ path: string; url: string }> {
+  checkRateLimit("uploadImage", 10, 60_000);
   const path = `public/${filename}`;
   const url = `${GH_API}/repos/${owner}/${repo}/contents/${path}`;
 
@@ -157,8 +220,7 @@ export async function uploadImage(
   });
 
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { message?: string };
-    throw new Error(err.message ?? `Failed to upload image: ${res.status}`);
+    throw sanitizeError("upload image", res.status);
   }
 
   return { path, url: `${owner}/${repo}/main/${path}` };
@@ -176,10 +238,11 @@ export async function createBranch(
   baseBranch: string,
   newBranch: string,
 ): Promise<BranchResult> {
+  checkRateLimit("createBranch", 10, 60_000);
   // Get the SHA of the base branch
   const refUrl = `${GH_API}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(baseBranch)}`;
   const refRes = await fetch(refUrl, { headers: headers(token) });
-  if (!refRes.ok) throw new Error(`Failed to get base branch ref: ${refRes.status}`);
+  if (!refRes.ok) throw sanitizeError("create branch", refRes.status);
   const refData = (await refRes.json()) as { object: { sha: string } };
 
   // Create the new branch
@@ -194,8 +257,7 @@ export async function createBranch(
   });
 
   if (!createRes.ok) {
-    const err = (await createRes.json().catch(() => ({}))) as { message?: string };
-    throw new Error(err.message ?? `Failed to create branch: ${createRes.status}`);
+    throw sanitizeError("create branch", createRes.status);
   }
 
   return (await createRes.json()) as BranchResult;
@@ -216,6 +278,7 @@ export async function createPullRequest(
   head: string,
   base: string,
 ): Promise<PrResult> {
+  checkRateLimit("createPullRequest", 10, 60_000);
   const url = `${GH_API}/repos/${owner}/${repo}/pulls`;
 
   const res = await fetch(url, {
@@ -225,28 +288,8 @@ export async function createPullRequest(
   });
 
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { message?: string };
-    throw new Error(err.message ?? `Failed to create PR: ${res.status}`);
+    throw sanitizeError("create pull request", res.status);
   }
 
   return (await res.json()) as PrResult;
-}
-
-export interface RepoPermission {
-  admin: boolean;
-  push: boolean;
-  pull: boolean;
-}
-
-export async function checkPermissions(
-  token: string,
-  owner: string,
-  repo: string,
-): Promise<RepoPermission> {
-  const url = `${GH_API}/repos/${owner}/${repo}`;
-  const res = await fetch(url, { headers: headers(token) });
-  if (!res.ok) throw new Error(`Failed to check permissions: ${res.status}`);
-
-  const data = (await res.json()) as { permissions: RepoPermission };
-  return data.permissions;
 }

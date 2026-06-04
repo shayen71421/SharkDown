@@ -30,3 +30,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+AGENTS.md
+HEARTBEAT.MD
+IDENTITY.MD
+SOUL.MD
+TOOLS.MD
+USER.MD

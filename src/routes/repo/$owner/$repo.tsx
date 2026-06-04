@@ -3,21 +3,25 @@ import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import {
   ArrowLeft,
-  Save,
-  Github,
   RefreshCw,
   ExternalLink,
-  GitBranch,
-  GitPullRequest,
   FileText,
   Loader2,
   AlertCircle,
   Image as ImageIcon,
+  GitBranch,
+  ChevronDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { toast, Toaster } from "sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { MarkdownEditor } from "@/components/editor/MarkdownEditor";
 import { EditorToolbar } from "@/components/editor/EditorToolbar";
@@ -26,14 +30,16 @@ import { GithubToolbar } from "@/components/github/github-toolbar";
 import { CommitDialog } from "@/components/github/commit-dialog";
 import { PRDialog } from "@/components/github/pr-dialog";
 import { useDoc, useGithubStore, type ViewMode } from "@/lib/store";
-import { getSessionJwt } from "@/lib/cookie";
+import { getSessionId } from "@/lib/cookie";
 import {
-  getSession,
+  checkSession,
+  getRepo,
   getReadme,
   saveReadme,
   uploadImage,
   createBranch,
   createPullRequest,
+  listBranches,
 } from "@/lib/github/functions.server";
 
 export const Route = createFileRoute("/repo/$owner/$repo")({
@@ -47,15 +53,16 @@ function RepoEditorPage() {
   const { owner, repo } = useParams({ from: Route.id });
   const navigate = useNavigate();
   const { title, markdown, view, setTitle, setMarkdown, setView } = useDoc();
-  const { user, jwt } = useGithubStore();
+  const { user } = useGithubStore();
+  const sessionId = getSessionId();
   const [editor, setEditor] = useState<Editor | null>(null);
-  const [editorReady, setEditorReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [readmeSha, setReadmeSha] = useState("");
   const [readmeExists, setReadmeExists] = useState(false);
   const [currentBranch, setCurrentBranch] = useState("main");
+  const [branches, setBranches] = useState<string[]>([]);
   const [lastCommitSha, setLastCommitSha] = useState("");
   const [showCommit, setShowCommit] = useState(false);
   const [showPR, setShowPR] = useState(false);
@@ -66,13 +73,11 @@ function RepoEditorPage() {
 
   // Check session
   useEffect(() => {
-    const token = getSessionJwt();
-    if (!token) {
+    if (!sessionId) {
       navigate({ to: "/login" });
       return;
     }
-    useGithubStore.getState().setJwt(token);
-    getSession({ data: { jwt: token } }).then((session) => {
+    checkSession({ data: { sessionId } }).then((session) => {
       if (!session.user) {
         navigate({ to: "/login" });
         return;
@@ -81,21 +86,24 @@ function RepoEditorPage() {
     });
   }, []);
 
-  // Reset editor state when view switches away from visual/split
+  // Load repo info for default branch
   useEffect(() => {
-    if (view !== "visual" && view !== "split") {
-      setEditor(null);
-      setEditorReady(false);
-    }
-  }, [view]);
+    if (!user || !sessionId) return;
+    getRepo({ data: { sessionId: sessionId!, owner, repo } })
+      .then((info) => setCurrentBranch(info.default_branch))
+      .catch(() => {});
+    listBranches({ data: { sessionId: sessionId!, owner, repo } })
+      .then((branchList) => setBranches(branchList.map((b) => b.name)))
+      .catch(() => {});
+  }, [owner, repo, user, sessionId]);
 
   // Load README
   useEffect(() => {
-    if (!user || !jwt) return;
+    if (!user || !sessionId) return;
     setLoading(true);
     setError(null);
 
-    getReadme({ data: { jwt: jwt!, owner, repo } })
+    getReadme({ data: { sessionId: sessionId!, owner, repo, branch: currentBranch } })
       .then((result) => {
         setMarkdown(result.content);
         setTitle(`${owner}/${repo} README`);
@@ -103,11 +111,15 @@ function RepoEditorPage() {
         setReadmeExists(result.exists);
       })
       .catch((err) => {
+        const msg = err instanceof Error ? err.message : "Failed to load README";
+        const friendly = msg.includes("fetch failed")
+          ? "Network error. Please check your connection and try again."
+          : msg;
         console.error("Failed to load README:", err);
-        setError(err.message ?? "Failed to load README");
+        setError(friendly);
       })
       .finally(() => setLoading(false));
-  }, [owner, repo, user, jwt]);
+  }, [owner, repo, user, sessionId, currentBranch]);
 
   // Create README (when none exists)
   const handleCreateReadme = () => {
@@ -125,7 +137,7 @@ function RepoEditorPage() {
     try {
       const result = await saveReadme({
         data: {
-          jwt: jwt!,
+          sessionId: sessionId!,
           owner,
           repo,
           content: markdown,
@@ -167,7 +179,7 @@ function RepoEditorPage() {
 
       const result = await uploadImage({
         data: {
-          jwt: jwt!,
+          sessionId: sessionId!,
           owner,
           repo,
           image: base64,
@@ -198,7 +210,7 @@ function RepoEditorPage() {
       // 1. Create branch
       await createBranch({
         data: {
-          jwt: jwt!,
+          sessionId: sessionId!,
           owner,
           repo,
           baseBranch: currentBranch,
@@ -209,7 +221,7 @@ function RepoEditorPage() {
       // 2. Save README to the new branch
       await saveReadme({
         data: {
-          jwt: jwt!,
+          sessionId: sessionId!,
           owner,
           repo,
           content: markdown,
@@ -222,7 +234,7 @@ function RepoEditorPage() {
       // 3. Create PR
       const pr = await createPullRequest({
         data: {
-          jwt: jwt!,
+          sessionId: sessionId!,
           owner,
           repo,
           title,
@@ -292,7 +304,7 @@ function RepoEditorPage() {
           onSave={() => setShowCommit(true)}
           onRefresh={() => {
             setLoading(true);
-            getReadme({ data: { jwt: jwt!, owner, repo } })
+            getReadme({ data: { sessionId: sessionId!, owner, repo, branch: currentBranch } })
               .then((r) => {
                 setMarkdown(r.content);
                 setReadmeSha(r.sha);
@@ -302,6 +314,53 @@ function RepoEditorPage() {
           }}
           onCreatePR={() => setShowPR(true)}
         />
+
+        <Separator orientation="vertical" className="h-5" />
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-xs font-mono"
+              disabled={branches.length === 0}
+            >
+              <GitBranch className="h-3.5 w-3.5" />
+              {currentBranch}
+              <ChevronDown className="h-3 w-3 opacity-60" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="max-h-64 overflow-y-auto">
+            {branches.map((b) => (
+              <DropdownMenuItem
+                key={b}
+                disabled={b === currentBranch}
+                onClick={() => {
+                  setCurrentBranch(b);
+                  setLoading(true);
+                  setError(null);
+                  getReadme({ data: { sessionId: sessionId!, owner, repo, branch: b } })
+                    .then((r) => {
+                      setMarkdown(r.content);
+                      setReadmeSha(r.sha);
+                      setReadmeExists(r.exists);
+                    })
+                    .catch((err) => {
+                      const msg = err instanceof Error ? err.message : "Failed to load README";
+                      setError(
+                        msg.includes("fetch failed")
+                          ? "Network error. Please check your connection and try again."
+                          : msg,
+                      );
+                    })
+                    .finally(() => setLoading(false));
+                }}
+              >
+                {b}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <div className="flex items-center gap-1.5">
           <input
@@ -375,13 +434,20 @@ function RepoEditorPage() {
                 onClick={() => {
                   setLoading(true);
                   setError(null);
-                  getReadme({ data: { jwt: jwt!, owner, repo } })
+                  getReadme({ data: { sessionId: sessionId!, owner, repo, branch: currentBranch } })
                     .then((r) => {
                       setMarkdown(r.content);
                       setReadmeSha(r.sha);
                       setReadmeExists(r.exists);
                     })
-                    .catch((e) => setError(e.message))
+                    .catch((e) => {
+                      const msg = e instanceof Error ? e.message : "Failed to load README";
+                      setError(
+                        msg.includes("fetch failed")
+                          ? "Network error. Please check your connection and try again."
+                          : msg,
+                      );
+                    })
                     .finally(() => setLoading(false));
                 }}
               >
@@ -408,16 +474,14 @@ function RepoEditorPage() {
           <>
             {(view === "visual" || view === "split") && (
               <div className="flex min-w-0 flex-1 flex-col">
-                {editorReady && editor && <EditorToolbar editor={editor} />}
+                {editor && <EditorToolbar editor={editor} />}
                 <div className="flex-1 overflow-auto">
                   <div className="mx-auto max-w-3xl">
                     <MarkdownEditor
                       markdown={markdown}
                       onChange={setMarkdown}
-                      onReady={(e) => {
-                        setEditor(e);
-                        setEditorReady(true);
-                      }}
+                      onReady={(e) => setEditor(e)}
+                      onDestroy={() => setEditor(null)}
                     />
                   </div>
                 </div>

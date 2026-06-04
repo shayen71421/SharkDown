@@ -1,32 +1,29 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 
-import { verifySession } from "./auth.server";
+import { getSession } from "./auth.server";
 import * as api from "./api.server";
 
-async function requireToken(jwt: string | null): Promise<string> {
-  if (!jwt) throw new Error("Not authenticated");
-  const session = await verifySession(jwt);
+async function requireGithubToken(sessionId: string | null): Promise<string> {
+  if (!sessionId) throw new Error("Not authenticated");
+  const session = await getSession(sessionId);
   if (!session) throw new Error("Session expired or invalid");
-  return session.token;
+  return session.githubToken;
 }
 
-const SessionInput = z.object({ jwt: z.string().nullable() });
+const SessionInput = z.object({ sessionId: z.string().nullable() });
 
-export const getSession = createServerFn({ method: "POST" })
+export const checkSession = createServerFn({ method: "POST" })
   .inputValidator(SessionInput)
   .handler(async ({ data }) => {
-    try {
-      const session = data.jwt ? await verifySession(data.jwt) : null;
-      if (!session) return { user: null };
-      return { user: session.user };
-    } catch {
-      return { user: null };
-    }
+    if (!data.sessionId) return { user: null };
+    const session = await getSession(data.sessionId);
+    if (!session) return { user: null };
+    return { user: session.user };
   });
 
 const ListReposInput = z.object({
-  jwt: z.string(),
+  sessionId: z.string(),
   page: z.number().optional().default(1),
   search: z.string().optional(),
 });
@@ -34,12 +31,38 @@ const ListReposInput = z.object({
 export const listRepositories = createServerFn({ method: "POST" })
   .inputValidator(ListReposInput)
   .handler(async ({ data }) => {
-    const token = await requireToken(data.jwt);
+    const token = await requireGithubToken(data.sessionId);
     return api.listRepositories(token, data.page, data.search);
   });
 
+const GetRepoInput = z.object({
+  sessionId: z.string(),
+  owner: z.string(),
+  repo: z.string(),
+});
+
+export const getRepo = createServerFn({ method: "POST" })
+  .inputValidator(GetRepoInput)
+  .handler(async ({ data }) => {
+    const token = await requireGithubToken(data.sessionId);
+    return api.getRepo(token, data.owner, data.repo);
+  });
+
+const ListBranchesInput = z.object({
+  sessionId: z.string(),
+  owner: z.string(),
+  repo: z.string(),
+});
+
+export const listBranches = createServerFn({ method: "POST" })
+  .inputValidator(ListBranchesInput)
+  .handler(async ({ data }) => {
+    const token = await requireGithubToken(data.sessionId);
+    return api.listBranches(token, data.owner, data.repo);
+  });
+
 const GetReadmeInput = z.object({
-  jwt: z.string(),
+  sessionId: z.string(),
   owner: z.string(),
   repo: z.string(),
   branch: z.string().optional(),
@@ -48,12 +71,12 @@ const GetReadmeInput = z.object({
 export const getReadme = createServerFn({ method: "POST" })
   .inputValidator(GetReadmeInput)
   .handler(async ({ data }) => {
-    const token = await requireToken(data.jwt);
+    const token = await requireGithubToken(data.sessionId);
     return api.getReadme(token, data.owner, data.repo, data.branch);
   });
 
 const SaveReadmeInput = z.object({
-  jwt: z.string(),
+  sessionId: z.string(),
   owner: z.string(),
   repo: z.string(),
   content: z.string(),
@@ -65,7 +88,7 @@ const SaveReadmeInput = z.object({
 export const saveReadme = createServerFn({ method: "POST" })
   .inputValidator(SaveReadmeInput)
   .handler(async ({ data }) => {
-    const token = await requireToken(data.jwt);
+    const token = await requireGithubToken(data.sessionId);
     return api.saveReadme(
       token,
       data.owner,
@@ -78,7 +101,7 @@ export const saveReadme = createServerFn({ method: "POST" })
   });
 
 const UploadImageInput = z.object({
-  jwt: z.string(),
+  sessionId: z.string(),
   owner: z.string(),
   repo: z.string(),
   image: z.string(),
@@ -89,7 +112,7 @@ const UploadImageInput = z.object({
 export const uploadImage = createServerFn({ method: "POST" })
   .inputValidator(UploadImageInput)
   .handler(async ({ data }) => {
-    const token = await requireToken(data.jwt);
+    const token = await requireGithubToken(data.sessionId);
     const message = `Add ${data.filename}`;
     return api.uploadImage(
       token,
@@ -103,7 +126,7 @@ export const uploadImage = createServerFn({ method: "POST" })
   });
 
 const CreateBranchInput = z.object({
-  jwt: z.string(),
+  sessionId: z.string(),
   owner: z.string(),
   repo: z.string(),
   baseBranch: z.string(),
@@ -113,12 +136,12 @@ const CreateBranchInput = z.object({
 export const createBranch = createServerFn({ method: "POST" })
   .inputValidator(CreateBranchInput)
   .handler(async ({ data }) => {
-    const token = await requireToken(data.jwt);
+    const token = await requireGithubToken(data.sessionId);
     return api.createBranch(token, data.owner, data.repo, data.baseBranch, data.newBranch);
   });
 
 const CreatePrInput = z.object({
-  jwt: z.string(),
+  sessionId: z.string(),
   owner: z.string(),
   repo: z.string(),
   title: z.string(),
@@ -130,7 +153,7 @@ const CreatePrInput = z.object({
 export const createPullRequest = createServerFn({ method: "POST" })
   .inputValidator(CreatePrInput)
   .handler(async ({ data }) => {
-    const token = await requireToken(data.jwt);
+    const token = await requireGithubToken(data.sessionId);
     return api.createPullRequest(
       token,
       data.owner,
@@ -140,17 +163,4 @@ export const createPullRequest = createServerFn({ method: "POST" })
       data.head,
       data.base,
     );
-  });
-
-const CheckPermissionsInput = z.object({
-  jwt: z.string(),
-  owner: z.string(),
-  repo: z.string(),
-});
-
-export const checkPermissions = createServerFn({ method: "POST" })
-  .inputValidator(CheckPermissionsInput)
-  .handler(async ({ data }) => {
-    const token = await requireToken(data.jwt);
-    return api.checkPermissions(token, data.owner, data.repo);
   });

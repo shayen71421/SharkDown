@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Github,
   LogOut,
@@ -19,8 +19,8 @@ import { Separator } from "@/components/ui/separator";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { useGithubStore, type RepoInfo } from "@/lib/store";
-import { getSessionJwt } from "@/lib/cookie";
-import { getSession, listRepositories } from "@/lib/github/functions.server";
+import { getSessionId } from "@/lib/cookie";
+import { checkSession, listRepositories } from "@/lib/github/functions.server";
 
 export const Route = createFileRoute("/dashboard")({
   head: () => ({
@@ -36,14 +36,12 @@ function DashboardPage() {
   const navigate = useNavigate();
   const {
     user,
-    jwt,
     repos,
     repoPage,
     repoSearch,
     repoTotal,
     loading,
     setUser,
-    setJwt,
     setRepos,
     setRepoPage,
     setRepoSearch,
@@ -51,16 +49,16 @@ function DashboardPage() {
   } = useGithubStore();
   const [searchInput, setSearchInput] = useState(repoSearch);
   const [error, setError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionId = getSessionId();
 
   // Check session on mount
   useEffect(() => {
-    const jwt = getSessionJwt();
-    if (!jwt) {
+    if (!sessionId) {
       navigate({ to: "/login" });
       return;
     }
-    setJwt(jwt);
-    getSession({ data: { jwt } }).then((session) => {
+    checkSession({ data: { sessionId } }).then((session) => {
       if (!session.user) {
         navigate({ to: "/login" });
         return;
@@ -71,10 +69,10 @@ function DashboardPage() {
 
   // Load repos when page/search changes
   useEffect(() => {
-    if (!user || !jwt) return;
+    if (!user || !sessionId) return;
     setLoading(true);
     setError(null);
-    listRepositories({ data: { jwt, page: repoPage, search: repoSearch || undefined } })
+    listRepositories({ data: { sessionId, page: repoPage, search: repoSearch || undefined } })
       .then((result) => {
         setRepos(result.repos, result.total);
       })
@@ -83,16 +81,22 @@ function DashboardPage() {
         setError(err.message ?? "Failed to load repositories");
       })
       .finally(() => setLoading(false));
-  }, [user, jwt, repoPage, repoSearch]);
+  }, [user, sessionId, repoPage, repoSearch]);
 
   const handleSearch = (value: string) => {
     setSearchInput(value);
-    const timer = setTimeout(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
       setRepoSearch(value);
       setRepoPage(1);
     }, 400);
-    return () => clearTimeout(timer);
   };
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
 
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });

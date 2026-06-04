@@ -87,14 +87,12 @@ export interface RepoInfo {
 
 interface GithubState {
   user: GithubUser | null;
-  jwt: string | null;
   repos: RepoInfo[];
   repoPage: number;
   repoSearch: string;
   repoTotal: number;
   loading: boolean;
   setUser: (user: GithubUser | null) => void;
-  setJwt: (jwt: string | null) => void;
   setRepos: (repos: RepoInfo[], total: number) => void;
   setRepoPage: (page: number) => void;
   setRepoSearch: (search: string) => void;
@@ -106,20 +104,17 @@ export const useGithubStore = create<GithubState>()(
   persist(
     (set) => ({
       user: null,
-      jwt: null,
       repos: [],
       repoPage: 1,
       repoSearch: "",
       repoTotal: 0,
       loading: false,
       setUser: (user) => set({ user }),
-      setJwt: (jwt) => set({ jwt }),
       setRepos: (repos, total) => set({ repos, repoTotal: total }),
       setRepoPage: (repoPage) => set({ repoPage }),
       setRepoSearch: (repoSearch) => set({ repoSearch }),
       setLoading: (loading) => set({ loading }),
-      reset: () =>
-        set({ user: null, jwt: null, repos: [], repoPage: 1, repoSearch: "", repoTotal: 0 }),
+      reset: () => set({ user: null, repos: [], repoPage: 1, repoSearch: "", repoTotal: 0 }),
     }),
     { name: "sharkdown-github", partialize: (state) => ({ user: state.user }) },
   ),

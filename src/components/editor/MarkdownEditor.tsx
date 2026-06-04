@@ -57,10 +57,12 @@ interface Props {
   markdown: string;
   onChange: (markdown: string) => void;
   onReady?: (editor: Editor) => void;
+  onDestroy?: () => void;
 }
 
-export function MarkdownEditor({ markdown, onChange, onReady }: Props) {
+export function MarkdownEditor({ markdown, onChange, onReady, onDestroy }: Props) {
   const lastEmitted = useRef(markdown);
+  const readyFired = useRef(false);
 
   const editor = useEditor({
     extensions: buildExtensions(),
@@ -68,8 +70,7 @@ export function MarkdownEditor({ markdown, onChange, onReady }: Props) {
     immediatelyRender: false,
     editorProps: {
       attributes: {
-        class:
-          "prose-invert max-w-none focus:outline-none px-10 py-12 min-h-[60vh]",
+        class: "prose-invert max-w-none focus:outline-none px-10 py-12 min-h-[60vh]",
       },
     },
     onUpdate: ({ editor }) => {
@@ -80,8 +81,17 @@ export function MarkdownEditor({ markdown, onChange, onReady }: Props) {
   });
 
   useEffect(() => {
-    if (editor && onReady) onReady(editor);
+    if (editor && onReady && !readyFired.current) {
+      readyFired.current = true;
+      onReady(editor);
+    }
   }, [editor, onReady]);
+
+  useEffect(() => {
+    return () => {
+      if (readyFired.current) onDestroy?.();
+    };
+  }, []);
 
   // External markdown changes (e.g. import)
   useEffect(() => {

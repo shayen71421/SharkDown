@@ -42,8 +42,7 @@ turndown.addRule("subscript", {
 // Task list items
 turndown.addRule("taskListItems", {
   filter: (node) =>
-    node.nodeName === "LI" &&
-    (node as HTMLElement).getAttribute("data-type") === "taskItem",
+    node.nodeName === "LI" && (node as HTMLElement).getAttribute("data-type") === "taskItem",
   replacement: (_content, node) => {
     const el = node as HTMLElement;
     const checked = el.getAttribute("data-checked") === "true";
@@ -80,9 +79,7 @@ turndown.addRule("table", {
 // Fenced code with language
 turndown.addRule("fencedCode", {
   filter: (node) =>
-    node.nodeName === "PRE" &&
-    !!node.firstChild &&
-    node.firstChild.nodeName === "CODE",
+    node.nodeName === "PRE" && !!node.firstChild && node.firstChild.nodeName === "CODE",
   replacement: (_content, node) => {
     const code = (node as HTMLElement).firstChild as HTMLElement;
     const className = code.getAttribute("class") ?? "";
@@ -119,5 +116,10 @@ export function markdownToHtml(md: string): string {
 }
 
 export function htmlToMarkdown(html: string): string {
-  return turndown.turndown(html).replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  return (
+    turndown
+      .turndown(html)
+      .replace(/\n{3,}/g, "\n\n")
+      .trim() + "\n"
+  );
 }

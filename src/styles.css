@@ -139,21 +139,45 @@
   font-size: 1.0625rem;
   line-height: 1.75;
 }
-.ProseMirror > * + * { margin-top: 0.85em; }
-.ProseMirror h1, .ProseMirror h2, .ProseMirror h3,
-.ProseMirror h4, .ProseMirror h5, .ProseMirror h6 {
+.ProseMirror > * + * {
+  margin-top: 0.85em;
+}
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
   font-family: var(--font-display);
   font-weight: 700;
   letter-spacing: -0.02em;
   line-height: 1.2;
   margin-top: 1.6em;
 }
-.ProseMirror h1 { font-size: 2.25rem; }
-.ProseMirror h2 { font-size: 1.75rem; }
-.ProseMirror h3 { font-size: 1.375rem; }
-.ProseMirror h4 { font-size: 1.125rem; }
-.ProseMirror h5 { font-size: 1rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted-foreground); }
-.ProseMirror h6 { font-size: 0.875rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted-foreground); }
+.ProseMirror h1 {
+  font-size: 2.25rem;
+}
+.ProseMirror h2 {
+  font-size: 1.75rem;
+}
+.ProseMirror h3 {
+  font-size: 1.375rem;
+}
+.ProseMirror h4 {
+  font-size: 1.125rem;
+}
+.ProseMirror h5 {
+  font-size: 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted-foreground);
+}
+.ProseMirror h6 {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--muted-foreground);
+}
 
 .ProseMirror p.is-editor-empty:first-child::before {
   color: var(--muted-foreground);
@@ -163,22 +187,39 @@
   pointer-events: none;
 }
 
-.ProseMirror ul, .ProseMirror ol { padding-left: 1.5rem; }
-.ProseMirror ul { list-style: disc; }
-.ProseMirror ol { list-style: decimal; }
-.ProseMirror li > p { margin: 0.15em 0; }
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5rem;
+}
+.ProseMirror ul {
+  list-style: disc;
+}
+.ProseMirror ol {
+  list-style: decimal;
+}
+.ProseMirror li > p {
+  margin: 0.15em 0;
+}
 
-.ProseMirror ul[data-type="taskList"] { list-style: none; padding-left: 0.25rem; }
+.ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25rem;
+}
 .ProseMirror ul[data-type="taskList"] li {
   display: flex;
   align-items: flex-start;
   gap: 0.6rem;
 }
-.ProseMirror ul[data-type="taskList"] li > label { margin-top: 0.45em; }
-.ProseMirror ul[data-type="taskList"] li > div { flex: 1; }
+.ProseMirror ul[data-type="taskList"] li > label {
+  margin-top: 0.45em;
+}
+.ProseMirror ul[data-type="taskList"] li > div {
+  flex: 1;
+}
 .ProseMirror ul[data-type="taskList"] input[type="checkbox"] {
   accent-color: var(--primary);
-  width: 1rem; height: 1rem;
+  width: 1rem;
+  height: 1rem;
 }
 
 .ProseMirror blockquote {
@@ -257,7 +298,8 @@
   border-radius: var(--radius-md);
   border: 1px solid var(--border);
 }
-.ProseMirror th, .ProseMirror td {
+.ProseMirror th,
+.ProseMirror td {
   border: 1px solid var(--border);
   padding: 0.5rem 0.75rem;
   vertical-align: top;
@@ -270,24 +312,67 @@
 }
 .ProseMirror .selectedCell::after {
   background: color-mix(in oklab, var(--primary) 18%, transparent);
-  content: ""; position: absolute; inset: 0; pointer-events: none;
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
 }
 
 /* Lowlight / Hljs token colors (subset, themed) */
-.hljs-comment, .hljs-quote { color: oklch(0.55 0.03 260); font-style: italic; }
-.hljs-keyword, .hljs-selector-tag, .hljs-literal { color: oklch(0.75 0.2 290); }
-.hljs-string, .hljs-doctag { color: oklch(0.78 0.15 155); }
-.hljs-number, .hljs-regexp, .hljs-variable, .hljs-template-variable { color: oklch(0.78 0.16 75); }
-.hljs-title, .hljs-section, .hljs-name, .hljs-attribute { color: oklch(0.76 0.16 230); }
-.hljs-type, .hljs-built_in, .hljs-builtin-name { color: oklch(0.72 0.18 200); }
-.hljs-symbol, .hljs-bullet, .hljs-tag { color: oklch(0.75 0.18 30); }
-.hljs-meta { color: oklch(0.65 0.05 260); }
-.hljs-emphasis { font-style: italic; }
-.hljs-strong { font-weight: 700; }
+.hljs-comment,
+.hljs-quote {
+  color: oklch(0.55 0.03 260);
+  font-style: italic;
+}
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-literal {
+  color: oklch(0.75 0.2 290);
+}
+.hljs-string,
+.hljs-doctag {
+  color: oklch(0.78 0.15 155);
+}
+.hljs-number,
+.hljs-regexp,
+.hljs-variable,
+.hljs-template-variable {
+  color: oklch(0.78 0.16 75);
+}
+.hljs-title,
+.hljs-section,
+.hljs-name,
+.hljs-attribute {
+  color: oklch(0.76 0.16 230);
+}
+.hljs-type,
+.hljs-built_in,
+.hljs-builtin-name {
+  color: oklch(0.72 0.18 200);
+}
+.hljs-symbol,
+.hljs-bullet,
+.hljs-tag {
+  color: oklch(0.75 0.18 30);
+}
+.hljs-meta {
+  color: oklch(0.65 0.05 260);
+}
+.hljs-emphasis {
+  font-style: italic;
+}
+.hljs-strong {
+  font-weight: 700;
+}
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
 ::-webkit-scrollbar-thumb {
   background: color-mix(in oklab, var(--foreground) 12%, transparent);
   border-radius: 999px;
@@ -298,7 +383,12 @@
 
 /* Utility: gradient text */
 .text-gradient {
-  background: linear-gradient(110deg, var(--primary-glow), var(--primary) 60%, oklch(0.78 0.18 220));
+  background: linear-gradient(
+    110deg,
+    var(--primary-glow),
+    var(--primary) 60%,
+    oklch(0.78 0.18 220)
+  );
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -306,8 +396,16 @@
 
 .bg-grid {
   background-image:
-    linear-gradient(to right, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px),
-    linear-gradient(to bottom, color-mix(in oklab, var(--foreground) 6%, transparent) 1px, transparent 1px);
+    linear-gradient(
+      to right,
+      color-mix(in oklab, var(--foreground) 6%, transparent) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in oklab, var(--foreground) 6%, transparent) 1px,
+      transparent 1px
+    );
   background-size: 44px 44px;
 }
 

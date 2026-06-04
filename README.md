@@ -22,13 +22,16 @@ A visual-first, Markdown-native editor for developers, maintainers, and technica
 - Undo/redo history
 
 ### GitHub Integration
-- **OAuth 2.0 sign-in** with JWT session cookies (30-day expiry)
+- **OAuth 2.0 sign-in** with server-side session store (in-memory for dev, swappable to Redis)
 - **Dashboard**: browse your GitHub repositories with search and pagination
 - **README editor**: load any repo's README.md, edit visually, save changes back to GitHub
+- **Branch selector**: switch between branches to view and edit different versions
 - **Commit dialog**: commit README changes with a message, optionally to a new branch
 - **Pull requests**: create a branch, commit changes, and open a PR — all from within the editor
-- **Image upload**: upload PNG/JPEG/WebP/GIF images directly to your repo's root
-- GitHub access token encrypted in an HS256 JWT — never exposed to the client
+- **Image upload**: upload PNG/JPEG/WebP/GIF images directly to your repo
+- GitHub access token stored server-side in session store — never exposed to the client
+- All errors sanitized — raw GitHub API errors never reach the client
+- In-memory rate limiting per endpoint
 
 ### Theme & UI
 - Dark-by-default with Light and System modes via `next-themes`
@@ -59,11 +62,10 @@ A visual-first, Markdown-native editor for developers, maintainers, and technica
    ```bash
    cp .env.example .env.local
    ```
-   Fill in your GitHub OAuth credentials and an auth secret:
+   Fill in your GitHub OAuth credentials:
    ```
    GITHUB_CLIENT_ID=your_client_id
    GITHUB_CLIENT_SECRET=your_client_secret
-   AUTH_SECRET=a-random-string-at-least-32-characters-long
    ```
 
    Create an OAuth App at https://github.com/settings/developers:
@@ -97,7 +99,7 @@ A visual-first, Markdown-native editor for developers, maintainers, and technica
 | **Editor** | TipTap + ProseMirror |
 | **Markdown** | `marked` (parser), `turndown` (serializer) |
 | **State** | Zustand with persistence |
-| **Auth** | GitHub OAuth 2.0, `jose` (JWT HS256) |
+| **Auth** | GitHub OAuth 2.0, server-side session store (UUID cookie) |
 | **Styling** | Tailwind CSS v4, shadcn/ui, Radix UI |
 | **Fonts** | Inter, Space Grotesk, JetBrains Mono |
 | **Icons** | Lucide React |
@@ -125,10 +127,11 @@ src/
 │   └── repo/$owner/$repo.tsx  # Repo README editor (auth required)
 ├── lib/
 │   ├── github/
-│   │   ├── auth.server.ts      # OAuth, JWT create/verify
-│   │   ├── api.server.ts       # GitHub REST client
+│   │   ├── auth.server.ts      # OAuth exchange, session create/get/delete
+│   │   ├── api.server.ts       # GitHub REST client + rate limiter
 │   │   └── functions.server.ts # TanStack server functions
-│   ├── store.ts         # Zustand stores
+│   ├── session-store.ts  # In-memory session store (swap for Redis in prod)
+│   ├── store.ts          # Zustand stores
 │   ├── markdown.ts      # md↔html conversion
 │   └── cookie.ts        # Client-side cookie reader
 ├── hooks/               # use-mobile
@@ -143,10 +146,12 @@ src/
 
 SharkDown uses **TanStack Start** for a seamless full-stack experience:
 
-- **Server functions** (`createServerFn`) call server-only code (GitHub API, JWT verification) from the client without writing REST endpoints.
+- **Server functions** (`createServerFn`) call server-only code (GitHub API, session lookup) from the client without writing REST endpoints.
 - **Zustand stores** persist editor content (`sharkdown-doc`) and GitHub session (`sharkdown-github`) to localStorage.
 - GitHub API calls go through server-only modules (`api.server.ts`) — the OAuth token never reaches the browser.
-- Session is an encrypted HS256 JWT stored in a cookie (`sd_session`), verified server-side on every server function call.
+- **Session architecture**: a random UUID is stored in a non-HttpOnly cookie (`sd_session`). The UUID is a lookup key for the server-side session store, which holds the GitHub access token. Since the UUID alone grants no access without the store, it's safe in a non-HttpOnly cookie.
+- **Rate limiting**: in-memory per-function rate limiter (30 req/min for reads, 10 req/min for writes).
+- **Error sanitization**: all GitHub API errors are mapped to generic, user-friendly messages; raw status codes and error details are never exposed.
 
 ---
 
@@ -156,7 +161,6 @@ SharkDown uses **TanStack Start** for a seamless full-stack experience:
 |----------|-------------|
 | `GITHUB_CLIENT_ID` | GitHub OAuth App client ID |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret |
-| `AUTH_SECRET` | Encryption key for JWT (32+ characters) |
 | `VITE_GITHUB_CLIENT_ID` | Public client ID (shipped to browser) |
 
 ---

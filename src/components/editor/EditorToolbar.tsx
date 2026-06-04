@@ -67,7 +67,8 @@ function Btn({
 }
 
 export function EditorToolbar({ editor }: Props) {
-  if (!editor || !editor.isEditable) {
+  const canRender = editor && editor.isEditable && editor.can;
+  if (!canRender) {
     return <div className="h-12 border-b border-border bg-surface/60" />;
   }
 

@@ -25,13 +25,13 @@ export const Route = createFileRoute("/api/auth/callback")({
         try {
           const token = await exchangeCode(code);
           const user = await getGithubUser(token);
-          const jwt = await createSession({ token, user });
+          const sessionId = await createSession(token, user);
 
           return new Response(null, {
             status: 302,
             headers: {
               Location: "/dashboard",
-              "Set-Cookie": `${SESSION_COOKIE}=${jwt}; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`,
+              "Set-Cookie": `${SESSION_COOKIE}=${sessionId}; Path=/; SameSite=Lax; Max-Age=${SESSION_MAX_AGE}`,
             },
           });
         } catch (e) {

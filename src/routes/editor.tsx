@@ -15,11 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast, Toaster } from "sonner";
 
 import { MarkdownEditor } from "@/components/editor/MarkdownEditor";
@@ -33,8 +29,7 @@ export const Route = createFileRoute("/editor")({
       { title: "Editor — SharkDown" },
       {
         name: "description",
-        content:
-          "Compose Markdown visually with SharkDown's TipTap-powered editor.",
+        content: "Compose Markdown visually with SharkDown's TipTap-powered editor.",
       },
     ],
   }),
@@ -54,6 +49,12 @@ function EditorPage() {
     return () => clearTimeout(t);
   }, [markdown, title]);
 
+  // tiny "saved" indicator off zustand persistence
+  useEffect(() => {
+    const t = setTimeout(() => setSavedAt(new Date()), 600);
+    return () => clearTimeout(t);
+  }, [markdown, title]);
+
   const handleCopy = async () => {
     await navigator.clipboard.writeText(markdown);
     setCopied(true);
@@ -65,7 +66,11 @@ function EditorPage() {
     const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const safe = title.trim().replace(/[^\w\-]+/g, "-").toLowerCase() || "document";
+    const safe =
+      title
+        .trim()
+        .replace(/[^\w\-]+/g, "-")
+        .toLowerCase() || "document";
     a.href = url;
     a.download = `${safe}.md`;
     a.click();
@@ -174,19 +179,10 @@ function EditorPage() {
           className="gap-1.5"
           title="Copy Markdown"
         >
-          {copied ? (
-            <Check className="h-4 w-4 text-success" />
-          ) : (
-            <Copy className="h-4 w-4" />
-          )}
+          {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
           <span className="hidden md:inline">Copy</span>
         </Button>
-        <Button
-          size="sm"
-          onClick={handleDownload}
-          className="gap-1.5"
-          title="Download .md"
-        >
+        <Button size="sm" onClick={handleDownload} className="gap-1.5" title="Download .md">
           <Download className="h-4 w-4" />
           <span className="hidden md:inline">Export</span>
         </Button>
@@ -197,21 +193,20 @@ function EditorPage() {
       <div className="flex min-h-0 flex-1">
         {(view === "visual" || view === "split") && (
           <div className="flex min-w-0 flex-1 flex-col">
-            <EditorToolbar editor={editor} />
+            {editor && <EditorToolbar editor={editor} />}
             <div className="flex-1 overflow-auto">
               <div className="mx-auto max-w-3xl">
                 <MarkdownEditor
                   markdown={markdown}
                   onChange={setMarkdown}
                   onReady={setEditor}
+                  onDestroy={() => setEditor(null)}
                 />
               </div>
             </div>
           </div>
         )}
-        {view === "split" && (
-          <Separator orientation="vertical" className="h-auto" />
-        )}
+        {view === "split" && <Separator orientation="vertical" className="h-auto" />}
         {(view === "markdown" || view === "split") && (
           <div className="flex min-w-0 flex-1 flex-col bg-[oklch(0.1_0.025_265)] dark:bg-[oklch(0.1_0.025_265)]">
             <div className="flex items-center justify-between border-b border-border/70 px-4 py-2.5 text-xs text-muted-foreground">
@@ -220,11 +215,7 @@ function EditorPage() {
                 onClick={handleCopy}
                 className="inline-flex items-center gap-1 rounded px-2 py-0.5 hover:bg-white/5"
               >
-                {copied ? (
-                  <Check className="h-3 w-3 text-success" />
-                ) : (
-                  <Copy className="h-3 w-3" />
-                )}
+                {copied ? <Check className="h-3 w-3 text-success" /> : <Copy className="h-3 w-3" />}
                 copy
               </button>
             </div>
@@ -245,9 +236,7 @@ function EditorPage() {
           <span>{chars.toLocaleString()} characters</span>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden sm:inline">
-            ⌘B bold · ⌘I italic · / commands
-          </span>
+          <span className="hidden sm:inline">⌘B bold · ⌘I italic · / commands</span>
           <span className="inline-flex items-center gap-1">
             <span className="h-1.5 w-1.5 rounded-full bg-success" />
             Autosaved locally

@@ -1,21 +1,11 @@
 import process from "node:process";
-import { SignJWT, jwtVerify } from "jose";
+import { sessionStore } from "../session-store";
 
 export interface GithubUser {
   id: number;
   login: string;
   avatar_url: string;
   name: string | null;
-}
-
-export interface SessionPayload {
-  token: string;
-  user: GithubUser;
-}
-
-function getSecret(): Uint8Array {
-  const secret = process.env.AUTH_SECRET ?? "dev-secret-change-in-production-min-32-chars!!";
-  return new TextEncoder().encode(secret);
 }
 
 export function getAuthUrl(redirectUri: string): string {
@@ -40,7 +30,7 @@ export async function exchangeCode(code: string): Promise<string> {
   });
 
   if (!res.ok) {
-    throw new Error(`Token exchange failed: ${res.status} ${res.statusText}`);
+    throw new Error(`Token exchange failed: ${res.status}`);
   }
 
   const body = (await res.json()) as { access_token?: string; error_description?: string };
@@ -55,28 +45,26 @@ export async function getGithubUser(token: string): Promise<GithubUser> {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github.v3+json" },
   });
   if (!res.ok) {
-    throw new Error(`Failed to fetch user: ${res.status} ${res.statusText}`);
+    throw new Error(`Failed to fetch user: ${res.status}`);
   }
   const data = (await res.json()) as GithubUser;
   return data;
 }
 
-export async function createSession(payload: SessionPayload): Promise<string> {
-  return await new SignJWT(payload as unknown as Record<string, unknown>)
-    .setProtectedHeader({ alg: "HS256" })
-    .setExpirationTime("30d")
-    .setIssuedAt()
-    .sign(getSecret());
+export async function createSession(githubToken: string, user: GithubUser): Promise<string> {
+  const sessionId = await sessionStore.create({ githubToken, user });
+  return sessionId;
 }
 
-export async function verifySession(jwt: string): Promise<SessionPayload | null> {
-  try {
-    const { payload } = await jwtVerify(jwt, getSecret());
-    return payload as unknown as SessionPayload;
-  } catch {
-    return null;
-  }
+export async function getSession(sessionId: string) {
+  const data = await sessionStore.get(sessionId);
+  if (!data) return null;
+  return { githubToken: data.githubToken, user: data.user };
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  await sessionStore.delete(sessionId);
 }
 
 export const SESSION_COOKIE = "sd_session";
-export const SESSION_MAX_AGE = 30 * 24 * 60 * 60;
+export const SESSION_MAX_AGE = 7 * 24 * 60 * 60;
