@@ -39,3 +39,4 @@ TOOLS.MD
 USER.MD
 .vercel
 .next
+.env copy.local

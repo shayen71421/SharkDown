@@ -1,4 +1,5 @@
 import process from "node:process";
+import { kv } from "@vercel/kv";
 
 export interface SessionData {
   githubToken: string;
@@ -13,7 +14,36 @@ export interface SessionStore {
   delete(sessionId: string): Promise<void>;
 }
 
-const SESSION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const SESSION_TTL_SEC = 7 * 24 * 60 * 60;
+
+/* ───── Vercel KV (Redis) — production ───── */
+
+class KvStore implements SessionStore {
+  async create(data: Omit<SessionData, "createdAt" | "expiresAt">): Promise<string> {
+    const sessionId = crypto.randomUUID();
+    const now = Date.now();
+    await kv.set(sessionId, {
+      ...data,
+      createdAt: now,
+      expiresAt: now + SESSION_TTL_SEC * 1000,
+    }, { ex: SESSION_TTL_SEC });
+    return sessionId;
+  }
+
+  async get(sessionId: string): Promise<SessionData | null> {
+    const data = await kv.get<SessionData>(sessionId);
+    if (!data) return null;
+    if (Date.now() > data.expiresAt) {
+      await kv.del(sessionId);
+      return null;
+    }
+    return data;
+  }
+
+  async delete(sessionId: string): Promise<void> {
+    await kv.del(sessionId);
+  }
+}
 
 /* ───── In-memory implementation (dev) ───── */
 
@@ -26,7 +56,7 @@ class InMemoryStore implements SessionStore {
     this.store.set(sessionId, {
       ...data,
       createdAt: now,
-      expiresAt: now + SESSION_TTL_MS,
+      expiresAt: now + SESSION_TTL_SEC * 1000,
     });
     return sessionId;
   }
@@ -46,9 +76,12 @@ class InMemoryStore implements SessionStore {
   }
 }
 
-/* ───── Production stub — swap in Redis/Vercel KV ───── */
+/* ───── Factory — auto-detect Vercel KV vs in-memory ───── */
 
 export function createSessionStore(): SessionStore {
+  if (process.env.KV_URL) {
+    return new KvStore();
+  }
   return new InMemoryStore();
 }
 
