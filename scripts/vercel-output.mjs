@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
+import { cpSync, existsSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 const dist = "dist";
@@ -22,7 +22,59 @@ cpSync(join(dist, "client"), join(output, "static"), { recursive: true, force: t
 const funcDir = join(output, "functions", "__server.func");
 mkdirSync(funcDir, { recursive: true });
 
-// .vc-config.json
+// Copy server code into function directory
+const serverDir = join(dist, "server");
+for (const entry of ["index.mjs", "package.json", ".vc-config.json"]) {
+  const src = join(serverDir, entry);
+  if (existsSync(src)) cpSync(src, join(funcDir, entry), { force: true });
+}
+
+// Copy all top-level server chunks (e.g. _repo-*.mjs, _tanstack-start-manifest_*.mjs)
+for (const entry of readdirSync(serverDir)) {
+  const src = join(serverDir, entry);
+  const dst = join(funcDir, entry);
+  if (entry.endsWith(".mjs") && !existsSync(dst)) {
+    cpSync(src, dst, { force: true });
+  }
+}
+
+// Copy server subdirectories (chunks, libs, ssr, node_modules)
+for (const sub of ["_chunks", "_libs", "_ssr", "node_modules"]) {
+  const src = join(serverDir, sub);
+  if (existsSync(src)) cpSync(src, join(funcDir, sub), { recursive: true, force: true });
+}
+
+// Create handler wrapper — Vercel Node.js launcher gives a request with plain-object headers,
+// but Nitro's vercel_web.fetch() calls req.headers.get() (Web API Headers method).
+// This wrapper normalizes the request before passing it to Nitro.
+const handlerCode = `import nitro from "./index.mjs";
+
+function toRequest(req) {
+  if (typeof req.headers?.get === "function") {
+    return req;
+  }
+  const protocol = req.headers?.["x-forwarded-proto"] || "https";
+  const host = req.headers?.["host"] || "localhost";
+  const url = new URL(req.url, protocol + "://" + host).href;
+  const headers = new Headers();
+  for (const k of Object.keys(req.headers || {})) {
+    const v = req.headers[k];
+    if (v !== undefined) {
+      headers.set(k, Array.isArray(v) ? v.join(", ") : String(v));
+    }
+  }
+  return new Request(url, {
+    method: req.method,
+    headers,
+    body: ["GET", "HEAD", "OPTIONS"].includes(req.method) ? undefined : req.body,
+  });
+}
+
+export default (req, context) => nitro.fetch(toRequest(req), context);
+`;
+writeFileSync(join(funcDir, "handler.mjs"), handlerCode);
+
+// .vc-config.json — point to our wrapper
 writeFileSync(
   join(funcDir, ".vc-config.json"),
   JSON.stringify({
@@ -34,30 +86,5 @@ writeFileSync(
     operationType: "SSR",
   }),
 );
-
-// Copy server code into function directory
-const serverDir = join(dist, "server");
-for (const entry of ["index.mjs", "package.json"]) {
-  const src = join(serverDir, entry);
-  if (existsSync(src)) cpSync(src, join(funcDir, entry), { force: true });
-}
-
-// Copy server chunks/libs
-for (const sub of ["_chunks", "_libs", "_ssr"]) {
-  const src = join(serverDir, sub);
-  if (existsSync(src)) cpSync(src, join(funcDir, sub), { recursive: true, force: true });
-}
-
-// Copy node_modules
-const nmSrc = join(serverDir, "node_modules");
-if (existsSync(nmSrc)) cpSync(nmSrc, join(funcDir, "node_modules"), { recursive: true, force: true });
-
-// Wrap Nitro's { fetch } default export as a proper function for Vercel
-const indexSrc = readFileSync(join(funcDir, "index.mjs"), "utf8");
-const patched = indexSrc.replace(
-  /export\s*\{[^}]*vercel_web\s+as\s+default[^}]*\};?$/m,
-  "const __nitro = vercel_web;\nexport default (req, context) => __nitro.fetch(req, context);",
-);
-writeFileSync(join(funcDir, "handler.mjs"), patched);
 
 console.log("Vercel output prepared at .vercel/output/");
