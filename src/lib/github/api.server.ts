@@ -26,6 +26,21 @@ function headers(token: string): Record<string, string> {
   };
 }
 
+async function ghFetch(url: string, options: RequestInit = {}, timeoutMs = 10_000): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (e: any) {
+    if (e.name === "AbortError") {
+      throw new Error("GitHub API request timed out. Please try again.");
+    }
+    throw new Error("Network error while contacting GitHub. Please check your connection.");
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 function sanitizeError(context: string, status: number): Error {
   if (status === 401 || status === 403) {
     return new Error("Unable to authenticate. Please sign in again.");
@@ -51,7 +66,7 @@ export interface RepoInfo {
 export async function getRepo(token: string, owner: string, repo: string): Promise<RepoInfo> {
   checkRateLimit("getRepo", 30, 60_000);
   const url = `${GH_API}/repos/${owner}/${repo}`;
-  const res = await fetch(url, { headers: headers(token) });
+  const res = await ghFetch(url, { headers: headers(token) });
   if (!res.ok) throw sanitizeError("load repository", res.status);
   return (await res.json()) as RepoInfo;
 }
@@ -64,7 +79,7 @@ export interface Branch {
 export async function listBranches(token: string, owner: string, repo: string): Promise<Branch[]> {
   checkRateLimit("listBranches", 30, 60_000);
   const url = `${GH_API}/repos/${owner}/${repo}/branches?per_page=100`;
-  const res = await fetch(url, { headers: headers(token) });
+  const res = await ghFetch(url, { headers: headers(token) });
   if (!res.ok) throw sanitizeError("load branches", res.status);
   return (await res.json()) as Branch[];
 }
@@ -92,13 +107,13 @@ export async function listRepositories(
 
   if (search) {
     url = `${GH_API}/search/repositories?q=${encodeURIComponent(`${search} user:@me`)}&per_page=${perPage}&page=${page}&sort=updated`;
-    const res = await fetch(url, { headers: headers(token) });
+    const res = await ghFetch(url, { headers: headers(token) });
     if (!res.ok) throw sanitizeError("load repositories", res.status);
     const data = (await res.json()) as { items: Repo[]; total_count: number };
     return { repos: data.items, total: data.total_count };
   }
 
-  const res = await fetch(url, { headers: headers(token) });
+  const res = await ghFetch(url, { headers: headers(token) });
   if (!res.ok) throw sanitizeError("load repositories", res.status);
 
   const repos = (await res.json()) as Repo[];
@@ -124,7 +139,7 @@ export async function getReadme(
   const ref = branch ? `?ref=${encodeURIComponent(branch)}` : "";
   const url = `${GH_API}/repos/${owner}/${repo}/readme${ref}`;
 
-  const res = await fetch(url, { headers: headers(token) });
+  const res = await ghFetch(url, { headers: headers(token) });
 
   if (res.status === 404) {
     return { content: "", sha: "", path: "README.md", exists: false };
@@ -149,7 +164,7 @@ export async function getFile(
   const ref = branch ? `?ref=${encodeURIComponent(branch)}` : "";
   const url = `${GH_API}/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}${ref}`;
 
-  const res = await fetch(url, { headers: headers(token) });
+  const res = await ghFetch(url, { headers: headers(token) });
   if (res.status === 404) return null;
   if (!res.ok) throw sanitizeError("access file", res.status);
 
@@ -180,11 +195,11 @@ export async function saveReadme(
   if (sha) body.sha = sha;
   if (branch) body.branch = branch;
 
-  const res = await fetch(url, {
+  const res = await ghFetch(url, {
     method: "PUT",
     headers: headers(token),
     body: JSON.stringify(body),
-  });
+  }, 30_000);
 
   if (!res.ok) {
     throw sanitizeError("save file", res.status);
@@ -213,11 +228,11 @@ export async function uploadImage(
   };
   if (branch) body.branch = branch;
 
-  const res = await fetch(url, {
+  const res = await ghFetch(url, {
     method: "PUT",
     headers: headers(token),
     body: JSON.stringify(body),
-  });
+  }, 30_000);
 
   if (!res.ok) {
     throw sanitizeError("upload image", res.status);
@@ -241,20 +256,20 @@ export async function createBranch(
   checkRateLimit("createBranch", 10, 60_000);
   // Get the SHA of the base branch
   const refUrl = `${GH_API}/repos/${owner}/${repo}/git/ref/heads/${encodeURIComponent(baseBranch)}`;
-  const refRes = await fetch(refUrl, { headers: headers(token) });
+  const refRes = await ghFetch(refUrl, { headers: headers(token) });
   if (!refRes.ok) throw sanitizeError("create branch", refRes.status);
   const refData = (await refRes.json()) as { object: { sha: string } };
 
   // Create the new branch
   const createUrl = `${GH_API}/repos/${owner}/${repo}/git/refs`;
-  const createRes = await fetch(createUrl, {
+  const createRes = await ghFetch(createUrl, {
     method: "POST",
     headers: headers(token),
     body: JSON.stringify({
       ref: `refs/heads/${newBranch}`,
       sha: refData.object.sha,
     }),
-  });
+  }, 30_000);
 
   if (!createRes.ok) {
     throw sanitizeError("create branch", createRes.status);
@@ -281,11 +296,11 @@ export async function createPullRequest(
   checkRateLimit("createPullRequest", 10, 60_000);
   const url = `${GH_API}/repos/${owner}/${repo}/pulls`;
 
-  const res = await fetch(url, {
+  const res = await ghFetch(url, {
     method: "POST",
     headers: headers(token),
     body: JSON.stringify({ title, body, head, base }),
-  });
+  }, 30_000);
 
   if (!res.ok) {
     throw sanitizeError("create pull request", res.status);

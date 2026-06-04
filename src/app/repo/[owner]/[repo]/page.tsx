@@ -34,17 +34,7 @@ import { CommitDialog } from "@/components/github/commit-dialog";
 import { PRDialog } from "@/components/github/pr-dialog";
 import { useDoc, useGithubStore, type ViewMode } from "@/lib/store";
 import { getSessionId } from "@/lib/cookie";
-
-async function callApi(action: string, data: any) {
-  const res = await fetch("/api/github", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, ...data }),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Request failed");
-  return json;
-}
+import { callApi } from "@/lib/api.client";
 
 export default function RepoEditorPage() {
   const params = useParams<{ owner: string; repo: string }>();
@@ -69,6 +59,7 @@ export default function RepoEditorPage() {
   const [uploading, setUploading] = useState(false);
   const [prResult, setPrResult] = useState<{ html_url: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const fetchKeyRef = useRef(0);
 
   // Check session
   useEffect(() => {
@@ -99,17 +90,20 @@ export default function RepoEditorPage() {
   // Load README
   useEffect(() => {
     if (!user || !sessionId) return;
+    const key = ++fetchKeyRef.current;
     setLoading(true);
     setError(null);
 
     callApi("getReadme", { sessionId, owner, repo, branch: currentBranch })
       .then((result: any) => {
+        if (key !== fetchKeyRef.current) return;
         setMarkdown(result.content);
         setTitle(`${owner}/${repo} README`);
         setReadmeSha(result.sha);
         setReadmeExists(result.exists);
       })
       .catch((err: any) => {
+        if (key !== fetchKeyRef.current) return;
         const msg = err instanceof Error ? err.message : "Failed to load README";
         const friendly = msg.includes("fetch failed")
           ? "Network error. Please check your connection and try again."
@@ -117,10 +111,13 @@ export default function RepoEditorPage() {
         console.error("Failed to load README:", err);
         setError(friendly);
       })
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (key === fetchKeyRef.current) setLoading(false);
+      });
   }, [owner, repo, user, sessionId, currentBranch]);
 
   const handleCreateReadme = () => {
+    fetchKeyRef.current++;
     const defaultContent = `# ${owner}/${repo}\n\n`;
     setMarkdown(defaultContent);
     setReadmeSha("");

@@ -23,17 +23,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { Badge } from "@/components/ui/badge";
 import { useGithubStore, type RepoInfo } from "@/lib/store";
 import { getSessionId } from "@/lib/cookie";
-
-async function callApi(action: string, data: any) {
-  const res = await fetch("/api/github", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ action, ...data }),
-  });
-  const json = await res.json();
-  if (!res.ok) throw new Error(json.error || "Request failed");
-  return json;
-}
+import { callApi } from "@/lib/api.client";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -117,11 +107,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-background text-foreground">
       <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur-md">
         <Link href="/" className="flex items-center gap-2">
-          <div className="grid h-7 w-7 place-items-center rounded-lg bg-gradient-to-br from-primary to-primary-glow text-primary-foreground text-xs font-bold shadow-lg shadow-primary/20">
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none">
-              <path d="M3 14c4-7 14-7 18 0-3-2-6-2-9 1-3-3-6-3-9-1z" fill="currentColor" />
-            </svg>
-          </div>
+          <img src="/logo.png" alt="SharkDown" className="h-7 w-7 rounded-lg object-cover" />
           <span className="font-display text-sm font-bold tracking-tight hidden sm:inline">SharkDown</span>
         </Link>
 
