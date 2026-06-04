@@ -1,4 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
 import {
   ArrowRight,
   Sparkles,
@@ -11,7 +13,6 @@ import {
   ListChecks,
   Code2,
   Quote,
-  LogIn,
   GitFork,
   ImagePlus,
   ChevronDown,
@@ -26,20 +27,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useGithubStore } from "@/lib/store";
-
-export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "SharkDown — Write Like Word. Publish Like Markdown." },
-      {
-        name: "description",
-        content:
-          "SharkDown is a visual-first Markdown editor with GitHub integration. Edit READMEs, commit, and open pull requests — all from a rich WYSIWYG editor.",
-      },
-    ],
-  }),
-  component: Landing,
-});
 
 const features = [
   {
@@ -89,11 +76,10 @@ const features = [
   },
 ];
 
-function Landing() {
+export default function Landing() {
   const { user } = useGithubStore();
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      {/* Ambient gradient */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 bg-grid opacity-40" />
       <div
         aria-hidden
@@ -107,7 +93,7 @@ function Landing() {
 
       <header className="mx-auto flex max-w-6xl items-center px-6 py-5">
         <div className="flex flex-1">
-          <Link to="/" className="flex items-center gap-2 w-fit">
+          <Link href="/" className="flex items-center gap-2 w-fit">
             <Logo />
             <span className="font-display text-lg font-bold tracking-tight">SharkDown</span>
           </Link>
@@ -120,15 +106,15 @@ function Landing() {
             Roadmap
           </a>
           {user ? (
-            <Link to="/dashboard" className="hover:text-foreground">
+            <Link href="/dashboard" className="hover:text-foreground">
               Dashboard
             </Link>
           ) : (
             <>
-              <Link to="/login" className="hover:text-foreground">
+              <Link href="/login" className="hover:text-foreground">
                 Sign in
               </Link>
-              <Link to="/dashboard" className="hover:text-foreground">
+              <Link href="/dashboard" className="hover:text-foreground">
                 Dashboard
               </Link>
             </>
@@ -137,7 +123,7 @@ function Landing() {
         <div className="flex flex-1 items-center justify-end gap-2">
           <ThemeToggle />
           <Button asChild size="sm" className="rounded-full">
-            <Link to="/editor">
+            <Link href="/editor">
               Open editor <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
@@ -152,7 +138,7 @@ function Landing() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link to="/dashboard">Dashboard</Link>
+                  <Link href="/dashboard">Dashboard</Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
@@ -168,7 +154,7 @@ function Landing() {
             </DropdownMenu>
           ) : (
             <Button asChild variant="outline" size="sm" className="rounded-full">
-              <Link to="/login">
+              <Link href="/login">
                 <Github className="mr-1 h-4 w-4" /> Sign in
               </Link>
             </Button>
@@ -176,7 +162,6 @@ function Landing() {
         </div>
       </header>
 
-      {/* Hero */}
       <section className="mx-auto max-w-5xl px-6 pb-16 pt-12 text-center md:pt-20">
         <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
           <Sparkles className="h-3.5 w-3.5 text-primary-glow" />
@@ -194,7 +179,7 @@ function Landing() {
         </p>
         <div className="mt-9 flex items-center justify-center gap-3">
           <Button asChild size="lg" className="rounded-full px-6">
-            <Link to="/editor">
+            <Link href="/editor">
               Start writing <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
@@ -203,7 +188,6 @@ function Landing() {
           </Button>
         </div>
 
-        {/* Editor mock */}
         <div className="mt-16 overflow-hidden rounded-2xl border border-border bg-surface text-left glow-shadow">
           <div className="flex items-center gap-1.5 border-b border-border bg-surface-elevated/60 px-4 py-3">
             <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
@@ -224,36 +208,26 @@ function Landing() {
               </p>
               <ul className="space-y-1.5 text-sm">
                 <li className="flex items-center gap-2">
-                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">
-                    ✓
-                  </span>
+                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">✓</span>
                   Tables & checklists
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">
-                    ✓
-                  </span>
+                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">✓</span>
                   Code blocks with syntax highlighting
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">
-                    ✓
-                  </span>
+                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">✓</span>
                   Browse & edit GitHub repos
                 </li>
                 <li className="flex items-center gap-2">
-                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">
-                    ✓
-                  </span>
+                  <span className="grid h-4 w-4 place-items-center rounded border border-primary bg-primary/20 text-[10px] text-primary-glow">✓</span>
                   Commit & open pull requests
                 </li>
               </ul>
             </div>
             <div className="bg-[oklch(0.1_0.025_265)] p-8 font-mono text-xs leading-relaxed text-[oklch(0.85_0.01_260)]">
               <div className="text-[oklch(0.55_0.03_260)]"># Hello, document</div>
-              <div className="mt-2">
-                A friendly editor with **bold**, *italics*, and `inline code`.
-              </div>
+              <div className="mt-2">A friendly editor with **bold**, *italics*, and `inline code`.</div>
               <div className="mt-4">- [x] Tables & checklists</div>
               <div>- [x] Code blocks with syntax highlighting</div>
               <div>- [x] Browse & edit GitHub repos</div>
@@ -263,15 +237,12 @@ function Landing() {
         </div>
       </section>
 
-      {/* Features */}
       <section id="features" className="mx-auto max-w-6xl px-6 py-20">
         <div className="mx-auto mb-12 max-w-2xl text-center">
           <h2 className="font-display text-3xl font-bold md:text-4xl">
             Edit locally. Ship to GitHub.
           </h2>
-          <p className="mt-4 text-muted-foreground">
-            A rich editor, full GitHub workflow — no terminal required.
-          </p>
+          <p className="mt-4 text-muted-foreground">A rich editor, full GitHub workflow — no terminal required.</p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {features.map((f) => (
@@ -289,46 +260,37 @@ function Landing() {
         </div>
       </section>
 
-      {/* IO */}
       <section className="mx-auto max-w-6xl px-6 pb-20">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="rounded-2xl border border-border bg-surface p-8">
             <FileUp className="mb-4 h-6 w-6 text-primary-glow" />
             <h3 className="font-display text-xl font-bold">Drop in any .md</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Paste Markdown, upload a file, or open a README. SharkDown parses it into a rich
-              visual document instantly.
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Paste Markdown, upload a file, or open a README.</p>
           </div>
           <div className="rounded-2xl border border-border bg-surface p-8">
             <FileDown className="mb-4 h-6 w-6 text-primary-glow" />
             <h3 className="font-display text-xl font-bold">Export pristine</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Copy to clipboard or download .md. Output is GFM-compatible and ready for GitHub, npm,
-              or your docs site.
-            </p>
+            <p className="mt-2 text-sm text-muted-foreground">Copy to clipboard or download .md. GFM-compatible.</p>
           </div>
         </div>
       </section>
 
-      {/* Roadmap */}
       <section id="roadmap" className="mx-auto max-w-3xl px-6 pb-24 text-center">
         <div className="mx-auto mb-3 inline-flex items-center gap-2 rounded-full border border-border bg-surface/60 px-3 py-1 text-xs text-muted-foreground">
           <Github className="h-3.5 w-3.5" /> Phase 2 — Live now
         </div>
         <h2 className="font-display text-3xl font-bold">Ship docs from your editor.</h2>
         <p className="mt-3 text-muted-foreground">
-          Sign in with GitHub, browse your repos, edit README files visually, commit and open pull
-          requests — without leaving SharkDown.
+          Sign in with GitHub, browse your repos, edit README files visually, commit and open pull requests.
         </p>
         <div className="mt-8 flex items-center justify-center gap-3">
           <Button asChild size="lg" className="rounded-full">
-            <Link to="/login">
+            <Link href="/login">
               <Github className="mr-2 h-4 w-4" /> Sign in with GitHub
             </Link>
           </Button>
           <Button asChild variant="outline" size="lg" className="rounded-full">
-            <Link to="/dashboard">Go to Dashboard</Link>
+            <Link href="/dashboard">Go to Dashboard</Link>
           </Button>
         </div>
       </section>
@@ -341,11 +303,5 @@ function Landing() {
 }
 
 function Logo() {
-  return (
-    <img
-      src="/logo.png"
-      alt="SharkDown"
-      className="h-8 w-8 rounded-lg object-cover"
-    />
-  );
+  return <img src="/logo.png" alt="SharkDown" className="h-8 w-8 rounded-lg object-cover" />;
 }

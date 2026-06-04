@@ -1,4 +1,7 @@
-import { createFileRoute, Link, useNavigate, useParams } from "@tanstack/react-router";
+"use client";
+
+import Link from "next/link";
+import { useRouter, useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { Editor } from "@tiptap/react";
 import {
@@ -31,27 +34,23 @@ import { CommitDialog } from "@/components/github/commit-dialog";
 import { PRDialog } from "@/components/github/pr-dialog";
 import { useDoc, useGithubStore, type ViewMode } from "@/lib/store";
 import { getSessionId } from "@/lib/cookie";
-import {
-  checkSession,
-  getRepo,
-  getReadme,
-  saveReadme,
-  uploadImage,
-  createBranch,
-  createPullRequest,
-  listBranches,
-} from "@/lib/github/functions.server";
 
-export const Route = createFileRoute("/repo/$owner/$repo")({
-  head: ({ params }) => ({
-    meta: [{ title: `${params.owner}/${params.repo} — SharkDown` }],
-  }),
-  component: RepoEditorPage,
-});
+async function callApi(action: string, data: any) {
+  const res = await fetch("/api/github", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action, ...data }),
+  });
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.error || "Request failed");
+  return json;
+}
 
-function RepoEditorPage() {
-  const { owner, repo } = useParams({ from: Route.id });
-  const navigate = useNavigate();
+export default function RepoEditorPage() {
+  const params = useParams<{ owner: string; repo: string }>();
+  const owner = params.owner;
+  const repo = params.repo;
+  const router = useRouter();
   const { title, markdown, view, setTitle, setMarkdown, setView } = useDoc();
   const { user } = useGithubStore();
   const sessionId = getSessionId();
@@ -74,26 +73,26 @@ function RepoEditorPage() {
   // Check session
   useEffect(() => {
     if (!sessionId) {
-      navigate({ to: "/login" });
+      router.push("/login");
       return;
     }
-    checkSession({ data: { sessionId } }).then((session) => {
-      if (!session.user) {
-        navigate({ to: "/login" });
+    callApi("checkSession", { sessionId }).then((res) => {
+      if (!res.user) {
+        router.push("/login");
         return;
       }
-      useGithubStore.getState().setUser(session.user);
+      useGithubStore.getState().setUser(res.user);
     });
   }, []);
 
   // Load repo info for default branch
   useEffect(() => {
     if (!user || !sessionId) return;
-    getRepo({ data: { sessionId: sessionId!, owner, repo } })
-      .then((info) => setCurrentBranch(info.default_branch))
+    callApi("getRepo", { sessionId, owner, repo })
+      .then((info: any) => setCurrentBranch(info.default_branch))
       .catch(() => {});
-    listBranches({ data: { sessionId: sessionId!, owner, repo } })
-      .then((branchList) => setBranches(branchList.map((b) => b.name)))
+    callApi("listBranches", { sessionId, owner, repo })
+      .then((branchList: any[]) => setBranches(branchList.map((b: any) => b.name)))
       .catch(() => {});
   }, [owner, repo, user, sessionId]);
 
@@ -103,14 +102,14 @@ function RepoEditorPage() {
     setLoading(true);
     setError(null);
 
-    getReadme({ data: { sessionId: sessionId!, owner, repo, branch: currentBranch } })
-      .then((result) => {
+    callApi("getReadme", { sessionId, owner, repo, branch: currentBranch })
+      .then((result: any) => {
         setMarkdown(result.content);
         setTitle(`${owner}/${repo} README`);
         setReadmeSha(result.sha);
         setReadmeExists(result.exists);
       })
-      .catch((err) => {
+      .catch((err: any) => {
         const msg = err instanceof Error ? err.message : "Failed to load README";
         const friendly = msg.includes("fetch failed")
           ? "Network error. Please check your connection and try again."
@@ -121,7 +120,6 @@ function RepoEditorPage() {
       .finally(() => setLoading(false));
   }, [owner, repo, user, sessionId, currentBranch]);
 
-  // Create README (when none exists)
   const handleCreateReadme = () => {
     const defaultContent = `# ${owner}/${repo}\n\n`;
     setMarkdown(defaultContent);
@@ -131,25 +129,17 @@ function RepoEditorPage() {
     toast.success("New README ready. Save it to GitHub when you're done.");
   };
 
-  // Save README to GitHub
   const handleSave = async (message: string, branch?: string) => {
     setSaving(true);
     try {
-      const result = await saveReadme({
-        data: {
-          sessionId: sessionId!,
-          owner,
-          repo,
-          content: markdown,
-          message,
-          sha: readmeSha,
-          branch,
-        },
+      const result = await callApi("saveReadme", {
+        sessionId, owner, repo,
+        content: markdown, message, sha: readmeSha, branch,
       });
       setReadmeSha(result.sha);
       setLastCommitSha(result.commit.sha);
       toast.success("Saved to GitHub!");
-    } catch (err) {
+    } catch (err: any) {
       const msg = err instanceof Error ? err.message : "Failed to save";
       toast.error(msg);
       throw err;
@@ -158,7 +148,6 @@ function RepoEditorPage() {
     }
   };
 
-  // Image upload
   const handleImageUpload = async (file: File) => {
     const validTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
     if (!validTypes.includes(file.type)) {
@@ -175,17 +164,15 @@ function RepoEditorPage() {
       const ext = file.name.split(".").pop() ?? "png";
       const filename = `image-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
       const buffer = await file.arrayBuffer();
-      const base64 = Buffer.from(buffer).toString("base64");
+      const bytes = new Uint8Array(buffer);
+      let binary = "";
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      const base64 = btoa(binary);
 
-      const result = await uploadImage({
-        data: {
-          sessionId: sessionId!,
-          owner,
-          repo,
-          image: base64,
-          filename,
-          branch: currentBranch,
-        },
+      const result = await callApi("uploadImage", {
+        sessionId, owner, repo, image: base64, filename, branch: currentBranch,
       });
 
       const mdLink = `![${filename}](${result.path})`;
@@ -195,7 +182,7 @@ function RepoEditorPage() {
         setMarkdown(markdown + `\n${mdLink}\n`);
       }
       toast.success("Image uploaded to repository!");
-    } catch (err) {
+    } catch (err: any) {
       const msg = err instanceof Error ? err.message : "Failed to upload image";
       toast.error(msg);
     } finally {
@@ -203,50 +190,24 @@ function RepoEditorPage() {
     }
   };
 
-  // Create pull request
   const handleCreatePR = async (title: string, description: string, branchName: string) => {
     setCreatingPr(true);
     try {
-      // 1. Create branch
-      await createBranch({
-        data: {
-          sessionId: sessionId!,
-          owner,
-          repo,
-          baseBranch: currentBranch,
-          newBranch: branchName,
-        },
+      await callApi("createBranch", {
+        sessionId, owner, repo, baseBranch: currentBranch, newBranch: branchName,
       });
 
-      // 2. Save README to the new branch
-      await saveReadme({
-        data: {
-          sessionId: sessionId!,
-          owner,
-          repo,
-          content: markdown,
-          message: title,
-          sha: readmeSha,
-          branch: branchName,
-        },
+      await callApi("saveReadme", {
+        sessionId, owner, repo, content: markdown, message: title, sha: readmeSha, branch: branchName,
       });
 
-      // 3. Create PR
-      const pr = await createPullRequest({
-        data: {
-          sessionId: sessionId!,
-          owner,
-          repo,
-          title,
-          body: description,
-          head: branchName,
-          base: currentBranch,
-        },
+      const pr = await callApi("createPullRequest", {
+        sessionId, owner, repo, title, body: description, head: branchName, base: currentBranch,
       });
 
       setPrResult(pr);
       toast.success("Pull request created!");
-    } catch (err) {
+    } catch (err: any) {
       const msg = err instanceof Error ? err.message : "Failed to create PR";
       toast.error(msg);
       throw err;
@@ -255,12 +216,8 @@ function RepoEditorPage() {
     }
   };
 
-  // Trigger file picker for image
-  const triggerImageUpload = () => {
-    fileRef.current?.click();
-  };
+  const triggerImageUpload = () => fileRef.current?.click();
 
-  // Word/char count
   const count = editor?.storage.characterCount;
   const chars = count?.characters() ?? markdown.length;
   const words = count?.words() ?? markdown.split(/\s+/).filter(Boolean).length;
@@ -286,10 +243,9 @@ function RepoEditorPage() {
         }}
       />
 
-      {/* Top bar */}
       <header className="z-30 flex items-center gap-2 border-b border-border bg-surface/80 px-4 py-2.5 backdrop-blur-md">
         <Button asChild variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-          <Link to="/dashboard">
+          <Link href="/dashboard">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
@@ -304,8 +260,8 @@ function RepoEditorPage() {
           onSave={() => setShowCommit(true)}
           onRefresh={() => {
             setLoading(true);
-            getReadme({ data: { sessionId: sessionId!, owner, repo, branch: currentBranch } })
-              .then((r) => {
+            callApi("getReadme", { sessionId, owner, repo, branch: currentBranch })
+              .then((r: any) => {
                 setMarkdown(r.content);
                 setReadmeSha(r.sha);
                 setReadmeExists(r.exists);
@@ -319,12 +275,7 @@ function RepoEditorPage() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 text-xs font-mono"
-              disabled={branches.length === 0}
-            >
+            <Button variant="ghost" size="sm" className="gap-1.5 text-xs font-mono" disabled={branches.length === 0}>
               <GitBranch className="h-3.5 w-3.5" />
               {currentBranch}
               <ChevronDown className="h-3 w-3 opacity-60" />
@@ -339,19 +290,15 @@ function RepoEditorPage() {
                   setCurrentBranch(b);
                   setLoading(true);
                   setError(null);
-                  getReadme({ data: { sessionId: sessionId!, owner, repo, branch: b } })
-                    .then((r) => {
+                  callApi("getReadme", { sessionId, owner, repo, branch: b })
+                    .then((r: any) => {
                       setMarkdown(r.content);
                       setReadmeSha(r.sha);
                       setReadmeExists(r.exists);
                     })
-                    .catch((err) => {
+                    .catch((err: any) => {
                       const msg = err instanceof Error ? err.message : "Failed to load README";
-                      setError(
-                        msg.includes("fetch failed")
-                          ? "Network error. Please check your connection and try again."
-                          : msg,
-                      );
+                      setError(msg.includes("fetch failed") ? "Network error. Please check your connection and try again." : msg);
                     })
                     .finally(() => setLoading(false));
                 }}
@@ -374,45 +321,23 @@ function RepoEditorPage() {
               e.target.value = "";
             }}
           />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={triggerImageUpload}
-            disabled={uploading}
-            className="gap-1.5"
-            title="Upload image"
-          >
-            {uploading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <ImageIcon className="h-4 w-4" />
-            )}
+          <Button variant="ghost" size="sm" onClick={triggerImageUpload} disabled={uploading} className="gap-1.5" title="Upload image">
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImageIcon className="h-4 w-4" />}
             <span className="hidden md:inline">Image</span>
           </Button>
         </div>
 
-        <Tabs
-          value={view}
-          onValueChange={(v) => setView(v as ViewMode)}
-          className="hidden sm:block"
-        >
+        <Tabs value={view} onValueChange={(v) => setView(v as ViewMode)} className="hidden sm:block">
           <TabsList className="h-9 bg-surface-elevated">
-            <TabsTrigger value="visual" className="gap-1.5 text-xs">
-              Visual
-            </TabsTrigger>
-            <TabsTrigger value="split" className="gap-1.5 text-xs">
-              Split
-            </TabsTrigger>
-            <TabsTrigger value="markdown" className="gap-1.5 text-xs">
-              Markdown
-            </TabsTrigger>
+            <TabsTrigger value="visual" className="gap-1.5 text-xs">Visual</TabsTrigger>
+            <TabsTrigger value="split" className="gap-1.5 text-xs">Split</TabsTrigger>
+            <TabsTrigger value="markdown" className="gap-1.5 text-xs">Markdown</TabsTrigger>
           </TabsList>
         </Tabs>
 
         <ThemeToggle />
       </header>
 
-      {/* Body */}
       <div className="flex min-h-0 flex-1">
         {loading ? (
           <div className="flex flex-1 items-center justify-center">
@@ -427,32 +352,22 @@ function RepoEditorPage() {
               <AlertCircle className="mx-auto mb-3 h-10 w-10 text-destructive" />
               <h2 className="text-lg font-semibold text-foreground">Failed to load README</h2>
               <p className="mt-1 text-sm text-muted-foreground">{error}</p>
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-4"
-                onClick={() => {
-                  setLoading(true);
-                  setError(null);
-                  getReadme({ data: { sessionId: sessionId!, owner, repo, branch: currentBranch } })
-                    .then((r) => {
-                      setMarkdown(r.content);
-                      setReadmeSha(r.sha);
-                      setReadmeExists(r.exists);
-                    })
-                    .catch((e) => {
-                      const msg = e instanceof Error ? e.message : "Failed to load README";
-                      setError(
-                        msg.includes("fetch failed")
-                          ? "Network error. Please check your connection and try again."
-                          : msg,
-                      );
-                    })
-                    .finally(() => setLoading(false));
-                }}
-              >
-                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
-                Retry
+              <Button variant="outline" size="sm" className="mt-4" onClick={() => {
+                setLoading(true);
+                setError(null);
+                callApi("getReadme", { sessionId, owner, repo, branch: currentBranch })
+                  .then((r: any) => {
+                    setMarkdown(r.content);
+                    setReadmeSha(r.sha);
+                    setReadmeExists(r.exists);
+                  })
+                  .catch((e: any) => {
+                    const msg = e instanceof Error ? e.message : "Failed to load README";
+                    setError(msg.includes("fetch failed") ? "Network error." : msg);
+                  })
+                  .finally(() => setLoading(false));
+              }}>
+                <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Retry
               </Button>
             </div>
           </div>
@@ -461,13 +376,8 @@ function RepoEditorPage() {
             <div className="max-w-md text-center">
               <FileText className="mx-auto mb-4 h-12 w-12 text-muted-foreground/40" />
               <h2 className="text-xl font-semibold">No README yet</h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This repository doesn't have a README.md file. Create one now and start editing
-                visually.
-              </p>
-              <Button size="lg" className="mt-6 rounded-full" onClick={handleCreateReadme}>
-                Create README.md
-              </Button>
+              <p className="mt-2 text-sm text-muted-foreground">This repository doesn't have a README.md file.</p>
+              <Button size="lg" className="mt-6 rounded-full" onClick={handleCreateReadme}>Create README.md</Button>
             </div>
           </div>
         ) : (
@@ -477,12 +387,7 @@ function RepoEditorPage() {
                 {editor && <EditorToolbar editor={editor} />}
                 <div className="flex-1 overflow-auto">
                   <div className="mx-auto max-w-3xl">
-                    <MarkdownEditor
-                      markdown={markdown}
-                      onChange={setMarkdown}
-                      onReady={(e) => setEditor(e)}
-                      onDestroy={() => setEditor(null)}
-                    />
+                    <MarkdownEditor markdown={markdown} onChange={setMarkdown} onReady={(e) => setEditor(e)} onDestroy={() => setEditor(null)} />
                   </div>
                 </div>
               </div>
@@ -493,19 +398,14 @@ function RepoEditorPage() {
                 <div className="flex items-center justify-between border-b border-border/70 px-4 py-2.5 text-xs text-muted-foreground">
                   <span className="font-mono">markdown</span>
                 </div>
-                <textarea
-                  value={markdown}
-                  onChange={(e) => setMarkdown(e.target.value)}
-                  spellCheck={false}
-                  className="min-h-0 flex-1 resize-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed text-[oklch(0.92_0.01_260)] outline-none"
-                />
+                <textarea value={markdown} onChange={(e) => setMarkdown(e.target.value)} spellCheck={false}
+                  className="min-h-0 flex-1 resize-none border-0 bg-transparent p-6 font-mono text-sm leading-relaxed text-[oklch(0.92_0.01_260)] outline-none" />
               </div>
             )}
           </>
         )}
       </div>
 
-      {/* Status bar */}
       {readmeExists && !loading && (
         <footer className="flex items-center justify-between border-t border-border bg-surface/80 px-4 py-1.5 text-xs text-muted-foreground backdrop-blur">
           <div className="flex items-center gap-4">
@@ -513,37 +413,16 @@ function RepoEditorPage() {
             <span>{chars.toLocaleString()} characters</span>
           </div>
           <div className="flex items-center gap-3">
-            {lastCommitSha && (
-              <span className="hidden sm:inline font-mono">#{lastCommitSha.slice(0, 7)}</span>
-            )}
-            <a
-              href={`https://github.com/${owner}/${repo}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground"
-            >
-              <ExternalLink className="h-3 w-3" />
-              Open on GitHub
+            {lastCommitSha && <span className="hidden sm:inline font-mono">#{lastCommitSha.slice(0, 7)}</span>}
+            <a href={`https://github.com/${owner}/${repo}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground">
+              <ExternalLink className="h-3 w-3" /> Open on GitHub
             </a>
           </div>
         </footer>
       )}
 
-      {/* Dialogs */}
-      <CommitDialog
-        open={showCommit}
-        onOpenChange={setShowCommit}
-        onSave={handleSave}
-        saving={saving}
-      />
-
-      <PRDialog
-        open={showPR}
-        onOpenChange={setShowPR}
-        onCreatePR={handleCreatePR}
-        creating={creatingPr}
-        result={prResult}
-      />
+      <CommitDialog open={showCommit} onOpenChange={setShowCommit} onSave={handleSave} saving={saving} />
+      <PRDialog open={showPR} onOpenChange={setShowPR} onCreatePR={handleCreatePR} creating={creatingPr} result={prResult} />
     </div>
   );
 }
