@@ -1,6 +1,5 @@
 import { cpSync, existsSync, mkdirSync, writeFileSync, readFileSync } from "fs";
-import { join, dirname } from "path";
-import { fileURLToPath } from "url";
+import { join } from "path";
 
 const dist = "dist";
 const output = ".vercel/output";
@@ -17,12 +16,7 @@ if (!existsSync(output)) mkdirSync(output, { recursive: true });
 cpSync(join(dist, "config.json"), join(output, "config.json"), { force: true });
 
 // Copy static files (rename client/ → static/ for Vercel v3 API)
-const staticDir = join(output, "static");
-if (existsSync(staticDir)) {
-  cpSync(join(dist, "client"), staticDir, { recursive: true, force: true });
-} else {
-  cpSync(join(dist, "client"), staticDir, { recursive: true, force: true });
-}
+cpSync(join(dist, "client"), join(output, "static"), { recursive: true, force: true });
 
 // Set up serverless function
 const funcDir = join(output, "functions", "__server.func");
@@ -33,7 +27,7 @@ writeFileSync(
   join(funcDir, ".vc-config.json"),
   JSON.stringify({
     runtime: "nodejs22.x",
-    handler: "index.mjs",
+    handler: "handler.mjs",
     launcherType: "Nodejs",
     shouldAddHelpers: false,
     supportsResponseStreaming: true,
@@ -57,5 +51,13 @@ for (const sub of ["_chunks", "_libs", "_ssr"]) {
 // Copy node_modules
 const nmSrc = join(serverDir, "node_modules");
 if (existsSync(nmSrc)) cpSync(nmSrc, join(funcDir, "node_modules"), { recursive: true, force: true });
+
+// Wrap Nitro's { fetch } default export as a proper function for Vercel
+const indexSrc = readFileSync(join(funcDir, "index.mjs"), "utf8");
+const patched = indexSrc.replace(
+  /export\s*\{[^}]*vercel_web\s+as\s+default[^}]*\};?$/m,
+  "const __nitro = vercel_web;\nexport default (req, context) => __nitro.fetch(req, context);",
+);
+writeFileSync(join(funcDir, "handler.mjs"), patched);
 
 console.log("Vercel output prepared at .vercel/output/");
