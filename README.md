@@ -22,7 +22,7 @@ A visual-first, Markdown-native editor for developers, maintainers, and technica
 - Undo/redo history
 
 ### GitHub Integration
-- **OAuth 2.0 sign-in** with server-side session store (in-memory for dev, swappable to Redis/Vercel KV)
+- **OAuth 2.0 sign-in** with server-side session store (in-memory for dev, auto-detects Vercel KV or Redis in prod)
 - **Dashboard**: browse your GitHub repositories with search and pagination
 - **README editor**: load any repo's README.md, edit visually, save changes back to GitHub
 - **Branch selector**: switch between branches to view and edit different versions
@@ -139,7 +139,7 @@ src/
 │   │   ├── auth.server.ts          # OAuth exchange, session create/get/delete
 │   │   └── api.server.ts           # GitHub REST client + rate limiter + fetch timeout
 │   ├── api.client.ts               # Shared client-side fetch wrapper
-│   ├── session-store.ts            # In-memory session store (swap for Redis in prod)
+│   ├── session-store.ts            # Session store — auto-detects Redis (ioredis) or uses in-memory
 │   ├── store.ts                    # Zustand stores
 │   ├── markdown.ts                 # md↔html conversion
 │   └── cookie.ts                   # Client-side cookie reader
@@ -171,6 +171,7 @@ SharkDown uses **Next.js 16 App Router** for a seamless full-stack experience:
 | `GITHUB_CLIENT_ID` | GitHub OAuth App client ID (server-only) |
 | `GITHUB_CLIENT_SECRET` | GitHub OAuth App client secret (server-only) |
 | `NEXT_PUBLIC_GITHUB_CLIENT_ID` | Public client ID (shipped to browser) |
+| `KV_URL` / `REDIS_URL` | Redis connection URL (auto-detected; any prefix works, e.g. `sharkdown_REDIS_URL`). Falls back to in-memory when absent. |
 
 ---
 
