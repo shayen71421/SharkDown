@@ -177,7 +177,6 @@ export function HeroSection() {
                     <span>- [x]</span>
                     <span className="text-[oklch(0.85_0.01_260)]">Commit & PR</span>
                   </div>
-                  <div className="mt-3 h-6 w-20 animate-pulse rounded bg-[oklch(0.85_0.01_260)]/10" />
                 </div>
               </div>
 
